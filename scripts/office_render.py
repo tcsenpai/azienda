@@ -119,22 +119,36 @@ def render_ansi(roles, teams, project, nocolor):
         tcells = [(short(m["role"], 10), m["drift"], False) for m in t["members"]]
         rooms.append((t["name"], sub, tcells, col, t["heat"], "(eredita rosa progetto)"))
 
-    # rendi ogni stanza in blocco-righe, poi affianca 2 per riga (il trucco:
-    # trasponi gli array di righe). ponytail: 2 stanze per fila, wrap.
+    # rendi ogni stanza (altezza già adattiva sul contenuto via ansi_room), poi
+    # impacca in 2 COLONNE masonry: ogni stanza va nella colonna più corta →
+    # niente buchi sotto le stanze piccole (fix layout, come per l'SVG).
+    ROOM_W = 30
     rendered = []
     for (ti, st, ce, co, he, el) in rooms:
         lines, w = ansi_room(ti, st, ce, co, he, nocolor, el)
         rendered.append(lines)
 
-    PERROW = 2
-    for i in range(0, len(rendered), PERROW):
-        group = rendered[i:i+PERROW]
-        h = max(len(b) for b in group)
-        for b in group:
-            b += [" " * _vis_len(b[0], nocolor)] * (h - len(b))  # pad verticale
-        for row in range(h):
-            out.append("  ".join(b[row] for b in group))
-        out.append("")
+    NCOL = 2
+    columns = [[] for _ in range(NCOL)]   # ogni colonna = lista di righe-testo
+    col_h = [0] * NCOL
+    for lines in rendered:
+        c = col_h.index(min(col_h))       # colonna più corta
+        columns[c].extend(lines)
+        columns[c].append("")             # spaziatura tra stanze
+        col_h[c] += len(lines) + 1
+
+    # affianca le colonne riga per riga; pad a larghezza fissa ROOM_W.
+    blank = " " * ROOM_W
+    maxrows = max((len(c) for c in columns), default=0)
+    for r in range(maxrows):
+        parts = []
+        for c in range(NCOL):
+            cell = columns[c][r] if r < len(columns[c]) else ""
+            # pad alla larghezza visibile della stanza
+            padn = ROOM_W - _vis_len(cell, nocolor)
+            parts.append(cell + (" " * padn if padn > 0 else ""))
+        out.append("  ".join(parts).rstrip())
+    out.append("")
 
     # legenda
     leg = "Legenda: ▄▀ agente · ⚠ drift (agente non su disco)"
@@ -153,67 +167,86 @@ def _vis_len(s, nocolor):
 
 # ----------------------------------------------------------------- SVG ----
 def render_svg(roles, teams, project):
-    TILE = 16
     pad = 20
-    room_w, room_h = 240, 150
-    per_row = 2
-    rooms = []
+    room_w = 240
+    DESK_W, DESK_H = 74, 44   # passo griglia scrivanie
+    HEAD_Y = 24               # banda titolo
+    BODY_TOP = 52             # offset prima scrivania dentro la stanza
+    heat_fill = {0: "#2b2b30", 1: "#5a4a20", 2: "#6a3a18"}
+
+    # --- modello stanze ---
+    raw = []
     cells = [(short(r["role"], 14), r["drift"], r.get("hl", False)) for r in roles]
-    rooms.append(("Ufficio · la Rosa", "ruolo → agente", cells, PALETTE[0][0], 0, "(nessun ruolo)"))
+    raw.append(("Ufficio · la Rosa", "ruolo → agente", cells, PALETTE[0][0], 0, "(nessun ruolo)"))
     for idx, t in enumerate(teams):
         tcells = [(short(m["role"], 14), m["drift"], False) for m in t["members"]]
-        rooms.append((t["name"], short(t["globs"], 30), tcells, PALETTE[(idx+1) % len(PALETTE)][0], t["heat"], "(eredita rosa progetto)"))
+        raw.append((t["name"], short(t["globs"], 30), tcells, PALETTE[(idx+1) % len(PALETTE)][0], t["heat"], "(eredita rosa progetto)"))
 
-    cols = per_row
-    rows = (len(rooms) + cols - 1) // cols
-    W = pad + cols * (room_w + pad)
-    H = pad + 40 + rows * (room_h + pad)
-    heat_fill = {0: "#2b2b30", 1: "#5a4a20", 2: "#6a3a18"}
+    # colonne desk ADATTIVE: 1 desk→1 col, 2→2, 3+→3. room_h = f(n desk).
+    def desk_cols(n):
+        return 1 if n <= 1 else (2 if n == 2 else 3)
+    def room_height(ce):
+        n = len(ce)
+        if n == 0:
+            return BODY_TOP + 30          # stanza-area/placeholder: bassa
+        dcols = desk_cols(n)
+        drows = (n + dcols - 1) // dcols
+        return BODY_TOP + drows * DESK_H + 8
+
+    sized = []  # (meta..., room_h, dcols)
+    for (title, sub, ce, color, heat, el) in raw:
+        sized.append((title, sub, ce, color, heat, el, room_height(ce), desk_cols(len(ce))))
+
+    # --- packing MASONRY su 2 colonne di stanze: metti ogni stanza nella
+    # colonna più corta. Elimina overflow (altezza reale) e buchi (colonne
+    # bilanciate per altezza, non per conteggio righe). ---
+    NCOL = 2
+    col_x = [pad + c * (room_w + pad) for c in range(NCOL)]
+    col_y = [pad + 40] * NCOL   # sotto il titolo pagina
+    placed = []
+    for room in sized:
+        c = col_y.index(min(col_y))   # colonna più corta
+        rx, ry = col_x[c], col_y[c]
+        placed.append((rx, ry, room))
+        col_y[c] += room[6] + pad     # room_h + pad
+
+    W = pad + NCOL * (room_w + pad)
+    H = max(col_y) + 12
 
     s = []
     s.append(f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" font-family="monospace">')
     s.append(f'<rect width="{W}" height="{H}" fill="#16161a"/>')
-    # pattern floor
     s.append('<defs><pattern id="floor" width="16" height="16" patternUnits="userSpaceOnUse">'
              '<rect width="16" height="16" fill="#1e1e24"/>'
              '<rect width="8" height="8" fill="#22222a"/><rect x="8" y="8" width="8" height="8" fill="#22222a"/></pattern></defs>')
     s.append(f'<text x="{pad}" y="28" fill="#f0f0f5" font-size="20" font-weight="bold">VISIONE AZIENDA · {esc_xml(project)}</text>')
 
-    for i, (title, sub, ce, color, heat, empty_label) in enumerate(rooms):
-        rx = pad + (i % cols) * (room_w + pad)
-        ry = pad + 40 + (i // cols) * (room_h + pad)
+    for rx, ry, (title, sub, ce, color, heat, empty_label, rh, dcols) in placed:
         floor = heat_fill.get(heat, "#1e1e24") if heat else "url(#floor)"
-        s.append(f'<rect x="{rx}" y="{ry}" width="{room_w}" height="{room_h}" fill="{floor}" stroke="{color}" stroke-width="3" rx="4"/>')
-        s.append(f'<rect x="{rx}" y="{ry}" width="{room_w}" height="24" fill="{color}"/>')
+        s.append(f'<rect x="{rx}" y="{ry}" width="{room_w}" height="{rh}" fill="{floor}" stroke="{color}" stroke-width="3" rx="4"/>')
+        s.append(f'<rect x="{rx}" y="{ry}" width="{room_w}" height="{HEAD_Y}" fill="{color}"/>')
         s.append(f'<text x="{rx+8}" y="{ry+17}" fill="#101014" font-size="13" font-weight="bold">{esc_xml(title)}</text>')
         if sub:
             s.append(f'<text x="{rx+8}" y="{ry+40}" fill="#9a9aa5" font-size="10">{esc_xml(sub)}</text>')
-        # scrivanie: griglia
-        dx, dy = rx + 14, ry + 52
+        dx, dy = rx + 14, ry + BODY_TOP
         for j, cell in enumerate(ce):
             label, drift = cell[0], cell[1]
             hl = cell[2] if len(cell) > 2 else False
-            cx = dx + (j % 3) * 74
-            cy = dy + (j // 3) * 44
-            # highlight: alone dietro l'avatar
+            cx = dx + (j % dcols) * DESK_W
+            cy = dy + (j // dcols) * DESK_H
             if hl:
                 s.append(f'<rect x="{cx+12}" y="{cy-4}" width="28" height="30" fill="none" stroke="#ffd94a" stroke-width="2" rx="4"/>')
-            # desk
             s.append(f'<rect x="{cx}" y="{cy+18}" width="52" height="12" fill="#3a3a44" rx="2"/>')
-            # avatar (testa+corpo pixel)
             head = "#d9a066" if not drift else "#c0392b"
             s.append(f'<rect x="{cx+18}" y="{cy}" width="16" height="16" fill="{head}"/>')
             s.append(f'<rect x="{cx+16}" y="{cy+14}" width="20" height="8" fill="{color}"/>')
             if drift:
                 s.append(f'<text x="{cx+36}" y="{cy+10}" fill="#e74c3c" font-size="12">⚠</text>')
-            # name tag
             s.append(f'<text x="{cx+26}" y="{cy+42}" fill="#e0e0e8" font-size="9" text-anchor="middle">{esc_xml(label)}</text>')
         if not ce:
-            s.append(f'<text x="{rx+room_w//2}" y="{ry+room_h//2+20}" fill="#55555f" font-size="11" text-anchor="middle">{esc_xml(empty_label)}</text>')
+            s.append(f'<text x="{rx+room_w//2}" y="{ry+rh//2+8}" fill="#55555f" font-size="11" text-anchor="middle">{esc_xml(empty_label)}</text>')
 
-    # legenda
-    ly = H - 8
-    s.append(f'<text x="{pad}" y="{ly}" fill="#8a8a95" font-size="10">▄ agente  ⚠ drift  ·  stanza tint = attività git 90g (con --heat)</text>')
+    s.append(f'<text x="{pad}" y="{H-8}" fill="#8a8a95" font-size="10">▄ agente  ⚠ drift  ·  stanza tint = attività git 90g (con --heat)</text>')
     s.append('</svg>')
     return "\n".join(s)
 
