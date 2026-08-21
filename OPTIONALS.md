@@ -108,11 +108,13 @@ Il plugin non scrive mai segreti in chiaro, con o senza Bitwarden.
 
 ---
 
-## python3 — parsing robusto dello stato
+## python3 — parsing robusto dello stato + mappa-ufficio
 
-**Cosa sblocca:** gli script leggono `state.json` con `python3` quando c'è (parse
-JSON affidabile); senza, cadono su un fallback `grep`. È quasi sempre già
-presente sui sistemi di sviluppo — non serve installarlo apposta.
+**Cosa sblocca:** (1) gli script leggono `state.json` con `python3` quando c'è
+(parse JSON affidabile), senza cadono su `grep`; (2) `/azienda-mappa` usa
+`python3` per il rendering pixel-art (ANSI e SVG) — senza, la mappa degrada a una
+vista testuale semplice (l'SVG richiede `python3`). È quasi sempre già presente
+sui sistemi di sviluppo — non serve installarlo apposta.
 
 ---
 

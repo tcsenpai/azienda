@@ -34,6 +34,7 @@ for t in "$SRC"/*.template.md; do
   [ -f "$t" ] && cp "$t" "$DEST/"
 done
 find "$DEST" -name '.DS_Store' -delete 2>/dev/null || true
+find "$DEST" -name '__pycache__' -type d -exec rm -rf {} + 2>/dev/null || true
 
 echo "[sync] fatto. Riavvia Claude Code per ricaricare hook/comandi."
 echo "[sync] NB: il registro installed_plugins.json deve puntare a $VER"

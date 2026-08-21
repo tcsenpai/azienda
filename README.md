@@ -61,6 +61,7 @@ ogni avvio: se `active:true`, reinietta la persona.
 /azienda-bootstrap                bootstrap automatico: scouting repo + chi assumere + organigramma
 /azienda-onboard                  configura il tracking (mycelium|vault) + assessment repo → policy
 /azienda-org [init]               organigramma ruolo→agente + gestione multi-team
+/azienda-mappa [svg] [--heat]     visione dell'azienda: mappa-ufficio statica (stile Gather.town)
 /azienda-riunione [team=X] <topic>  riunione: dibattito sequenziale tra agenti + verbale
 /azienda-audit                    audit di conformità alle policy (on-demand)
 /azienda-update                   migra lo stato per-progetto al nuovo schema (idempotente)
@@ -93,6 +94,23 @@ Nessun restart richiesto.
   di costruire da zero. Read + Bash, nessuna scrittura.
 
 Nessuno dei due vede gli MCP di sessione: quelli li vede solo il Leader.
+
+## Visione dell'azienda (mappa-ufficio)
+
+`/azienda-mappa` disegna una **mappa-ufficio statica** stile Gather.town da
+`organigramma.md` e `teams.md`: le scrivanie sono i ruoli (ruolo→agente), le
+stanze sono i team. Solo grafica, nessuna interattività.
+
+- Default: scena **ANSI** nel terminale (zero-dep; con `python3` è la mappa
+  pixel-art, senza è una vista testuale).
+- `/azienda-mappa svg` → un file **SVG** pixel-art self-contained, apribile in
+  un browser.
+- `--heat` colora le stanze per attività git recente (commit 90g sulle glob del
+  team) — `cold/warm/hot` è segnale grezzo di attività, non di importanza.
+- `--drift` marca ⚠ gli agenti non più presenti su disco (opt-in: non conosce i
+  built-in dell'harness).
+- `--highlight=SRE,Review` evidenzia dei ruoli (es. i partecipanti di una
+  riunione).
 
 ## Memoria (due livelli)
 
