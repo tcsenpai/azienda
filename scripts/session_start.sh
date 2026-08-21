@@ -1,22 +1,22 @@
 #!/usr/bin/env bash
-# session_start.sh — hook SessionStart della modalità azienda.
+# session_start.sh — SessionStart hook for azienda mode.
 #
-# Legge ./.claude/azienda/state.json sulla radice del progetto.
-# - Se non esiste o active=false  → exit 0 silenzioso (nessun output).
-# - Se active=true                → stampa la persona su stdout. Per l'evento
-#   SessionStart, Claude Code aggiunge lo stdout plain-text al contesto della
-#   sessione, quindi la persona viene iniettata automaticamente a ogni avvio.
+# Reads ./.claude/azienda/state.json resolved against the project root.
+# - If it doesn't exist or active=false → silent exit 0 (no output).
+# - If active=true                      → prints the persona on stdout. For the
+#   SessionStart event, Claude Code adds the plain-text stdout to the session's
+#   context, so the persona gets injected automatically on every startup.
 
 set -uo pipefail
 
-# --- Risoluzione radice progetto (identica a toggle.sh) ---
+# --- Project root resolution (identical to toggle.sh) ---
 resolve_project_dir() {
   if [ -n "${CLAUDE_PROJECT_DIR:-}" ] && [ -d "${CLAUDE_PROJECT_DIR:-}" ]; then
     printf '%s' "$CLAUDE_PROJECT_DIR"
     return
   fi
-  # Stato azienda esistente = segnale più specifico: cercalo PRIMA del git
-  # toplevel (vedi toggle.sh per il razionale sui repo annidati).
+  # An existing azienda state = the most specific signal: look for it BEFORE
+  # the git toplevel (see toggle.sh for the rationale on nested repos).
   local d="$PWD"
   while [ "$d" != "/" ]; do
     [ -f "$d/.claude/azienda/state.json" ] && { printf '%s' "$d"; return; }
@@ -33,43 +33,43 @@ resolve_project_dir() {
 PROJECT_DIR="$(resolve_project_dir)"
 STATE_FILE="$PROJECT_DIR/.claude/azienda/state.json"
 
-# Nessuno stato o file assente → silenzio.
+# No state or missing file → silence.
 [ -f "$STATE_FILE" ] || exit 0
 
-# active != true → silenzio.
-# ponytail: python3 parser vero se c'è, grep come fallback (vedi toggle.sh).
+# active != true → silence.
+# ponytail: real python3 parser if present, grep as fallback (see toggle.sh).
 if command -v python3 >/dev/null 2>&1; then
   python3 -c 'import json,sys;sys.exit(0 if json.load(open(sys.argv[1])).get("active") is True else 1)' "$STATE_FILE" 2>/dev/null || exit 0
 else
   grep -Eq '"active"[[:space:]]*:[[:space:]]*true' "$STATE_FILE" || exit 0
 fi
 
-# Attiva: inietta il BRIEF compatto (non l'intera persona). A ogni ripresa di
-# sessione bastano poche righe operative + il puntatore al profilo completo;
-# la persona intera la carica solo /azienda on (attivazione esplicita).
+# Active: injects the compact BRIEF (not the whole persona). On every session
+# resume, a few operational lines plus the pointer to the full profile are
+# enough; the full persona is loaded only by /azienda on (explicit activation).
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PLUGIN_ROOT="$(dirname "$SCRIPT_DIR")"
 BRIEF_FILE="$PLUGIN_ROOT/persona-brief.md"
 PERSONA_FILE="$PLUGIN_ROOT/persona.md"
-# fallback: se il brief manca, usa la persona completa
+# fallback: if the brief is missing, use the full persona
 [ -f "$BRIEF_FILE" ] || BRIEF_FILE="$PERSONA_FILE"
 
 POLICIES_FILE="$PROJECT_DIR/.claude/azienda/policies.md"
 
 if [ -f "$BRIEF_FILE" ]; then
-  # delimitatore | e escape di &,| così un nome con caratteri speciali non rompe
+  # | delimiter and &,| escaping so a name with special chars doesn't break it
   _f=$(printf '%s' "${AZIENDA_FOUNDER:-Cris}" | sed 's/[&|]/\\&/g')
   sed "s|{{FOUNDER}}|$_f|g" "$BRIEF_FILE"
   echo
-  echo ">> Modalità azienda ATTIVA (stato persistente su disco). Assumi il ruolo"
-  echo ">> di Leader dall'inizio della sessione. Profilo completo (per orchestrare"
-  echo ">> lavori non banali): $PERSONA_FILE"
-  echo ">> Gli script del plugin (roster/agents/memory/audit) sono in: $PLUGIN_ROOT"
-  echo ">> Quando la persona cita 'scripts/X' o 'roster.md', usa quel percorso."
+  echo ">> azienda mode ACTIVE (state persisted on disk). Adopt the Leader role"
+  echo ">> from the start of the session. Full profile (for orchestrating"
+  echo ">> non-trivial work): $PERSONA_FILE"
+  echo ">> The plugin scripts (roster/agents/memory/audit) are in: $PLUGIN_ROOT"
+  echo ">> When the persona mentions 'scripts/X' or 'roster.md', use that path."
   if [ -f "$POLICIES_FILE" ]; then
-    echo ">> LEGGI le policy del progetto in $POLICIES_FILE e applicale."
+    echo ">> READ the project's policies in $POLICIES_FILE and apply them."
   fi
-  # Contatore sessioni + nudge periodico di audit conformità (soft, non blocca).
+  # Session counter + periodic compliance-audit nudge (soft, non-blocking).
   bash "$SCRIPT_DIR/audit.sh" tick 2>/dev/null || true
 fi
 

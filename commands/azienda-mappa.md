@@ -1,6 +1,6 @@
 ---
-description: Visione dell'azienda — mappa-ufficio statica (stile Gather.town) da organigramma e team. Solo con modalità azienda ATTIVA.
-argument-hint: (nessuno) | svg | --heat
+description: View of the azienda — a static office map (Gather.town style) from org chart and teams. Only with azienda mode ACTIVE.
+argument-hint: (none) | svg | --heat
 allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/toggle.sh *), Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/office.sh *)
 ---
 
@@ -8,32 +8,32 @@ allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/toggle.sh *), Bash(bash $
 
 !`bash ${CLAUDE_PLUGIN_ROOT}/scripts/toggle.sh status | grep -E 'ATTIVA|DISATTIVA' | head -1`
 
-## Mappa dell'azienda
+## azienda map
 
 !`bash ${CLAUDE_PLUGIN_ROOT}/scripts/office.sh ansi --no-color $ARGUMENTS`
 
-## Cosa fare adesso
+## What to do now
 
-**Controlla il gate.** Se `DISATTIVA`, di' al founder di fare `/azienda on` e
-fermati. Se `ATTIVA`, sopra c'è la **visione dell'azienda**: una mappa-ufficio
-statica (stanze = team, scrivanie = ruolo→agente) generata da `organigramma.md`
-e `teams.md`.
+**Check the gate.** If `DISATTIVA`, tell the founder to run `/azienda on` and
+stop. If `ATTIVA`, above is the **view of the azienda**: a static office map
+(rooms = teams, desks = role→agent) generated from `organigramma.md`
+and `teams.md`.
 
-Presentala al founder così com'è. Note d'uso:
+Present it to the founder as-is. Usage notes:
 
-- **SVG curato** (per condividere/guardare in un browser): `office.sh svg
-  ./.claude/azienda/riunioni/azienda.svg` (percorso assoluto del plugin stampato
-  sopra). Pixel-art con stanze colorate, avatar, name-tag. Aggiungi `--open` per
-  aprirlo subito nel viewer di sistema (macOS `open` / Linux `xdg-open`).
-- **heat**: nella mappa SVG il termometro è **ON di default** (colora le stanze
-  per attività git recente, commit 90g sulle glob del team) — degrada a neutro
-  senza git. `--no-heat` per spegnerlo. `cold/warm/hot` = segnale grezzo di
-  attività, **non** di importanza (un team stabile è cold, non morto). In ANSI
-  resta opt-in (`--heat`).
-- **`--drift`**: marca con ⚠ gli agenti dell'organigramma che non esistono più
-  come file su disco. NB: non conosce i subagent built-in dell'harness, quindi
-  è opt-in per non dare falsi positivi.
+- **Curated SVG** (to share/view in a browser): `office.sh svg
+  ./.claude/azienda/riunioni/azienda.svg` (absolute plugin path printed
+  above). Pixel-art with colored rooms, avatars, name-tags. Add `--open` to
+  open it right away in the system viewer (macOS `open` / Linux `xdg-open`).
+- **heat**: in the SVG map the heat gauge is **ON by default** (colors rooms
+  by recent git activity, commits over the last 90 days on the team's globs) —
+  degrades to neutral without git. `--no-heat` to turn it off. `cold/warm/hot`
+  is a raw activity signal, **not** an importance signal (a stable team is
+  cold, not dead). In ANSI it stays opt-in (`--heat`).
+- **`--drift`**: marks with ⚠ the org chart's agents that no longer exist as
+  files on disk. Note: it doesn't know about the harness's built-in
+  subagents, so it's opt-in to avoid false positives.
 
-Se l'organigramma non c'è ancora, crealo prima con `/azienda-bootstrap` o
-`/azienda-org init`. La mappa è solo grafica: nessuna interattività, nessuno
-stato modificato.
+If the org chart doesn't exist yet, create it first with `/azienda-bootstrap` or
+`/azienda-org init`. The map is purely visual: no interactivity, no state
+modified.

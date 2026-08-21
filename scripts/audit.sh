@@ -1,26 +1,26 @@
 #!/usr/bin/env bash
-# audit.sh — conformità del Leader alle policy del progetto (policy-drift).
+# audit.sh — Leader's compliance with the project's policy (policy-drift).
 #
-# Sub-azioni ($1):
-#   tick    incrementa il contatore sessioni e, se supera la soglia dall'ultimo
-#           audit, emette un NUDGE soft (nessun blocco). Chiamato da session_start.
-#   report  raccoglie i fatti per un audit di conformità e istruisce il Leader
-#           a confrontare il proprio operato con policies.md. Chiamato da /azienda audit.
-#   done    registra che un audit è stato fatto ora (azzera il contatore-da-audit).
+# Sub-actions ($1):
+#   tick    increments the session counter and, if it exceeds the threshold
+#           since the last audit, emits a soft NUDGE (no blocking). Called by session_start.
+#   report  gathers the facts for a compliance audit and instructs the Leader
+#           to compare their own work against policies.md. Called by /azienda audit.
+#   done    records that an audit has just been done (resets the since-audit counter).
 #
-# Tutto file-based: contatori in state.json, ledger append-only in ledger.md.
-# Nessun runtime, nessuna inferenza dai log: l'intento lo dà il Leader nel report.
+# Fully file-based: counters in state.json, append-only ledger in ledger.md.
+# No runtime, no inference from logs: the Leader supplies the intent in the report.
 
 set -uo pipefail
 
 ACTION="${1:-report}"
 
-# Path assoluto di questo script: le istruzioni differite al Leader devono usare
-# QUESTO, non ${CLAUDE_PLUGIN_ROOT} (che è vuoto nella shell delle Bash del
-# modello — è espanso solo in frontmatter/hook, non a runtime).
+# Absolute path of this script: deferred instructions to the Leader must use
+# THIS, not ${CLAUDE_PLUGIN_ROOT} (which is empty in the model's Bash shell —
+# it's expanded only in frontmatter/hooks, not at runtime).
 SELF="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
 
-# Soglia sessioni oltre la quale il nudge suggerisce un audit (override via env).
+# Session threshold above which the nudge suggests an audit (override via env).
 AUDIT_EVERY="${AZIENDA_AUDIT_EVERY:-5}"
 
 resolve_project_dir() {
@@ -45,7 +45,7 @@ STATE_FILE="$STATE_DIR/state.json"
 POLICIES_FILE="$STATE_DIR/policies.md"
 LEDGER_FILE="$STATE_DIR/ledger.md"
 
-# Legge un intero da state.json (default 0). $1 = chiave.
+# Reads an integer from state.json (default 0). $1 = key.
 read_int() {
   [ -f "$STATE_FILE" ] || { echo 0; return; }
   if command -v python3 >/dev/null 2>&1; then
@@ -54,7 +54,7 @@ read_int() {
   echo 0
 }
 
-# Scrive/aggiorna una chiave intera in state.json preservando il resto.
+# Writes/updates an integer key in state.json preserving the rest.
 write_int() {
   [ -f "$STATE_FILE" ] || return 0
   command -v python3 >/dev/null 2>&1 || return 0
@@ -64,8 +64,8 @@ path,key,val=sys.argv[1],sys.argv[2],int(sys.argv[3])
 try: d=json.load(open(path))
 except Exception: d={}
 d[key]=val
-# scrittura atomica: un lettore concorrente (session_start/toggle) non deve mai
-# vedere JSON troncato durante il write del contatore.
+# atomic write: a concurrent reader (session_start/toggle) must never see
+# truncated JSON during the counter's write.
 tmp=path+".tmp"
 with open(tmp,'w') as f: json.dump(d,f,indent=2); f.write("\n")
 os.replace(tmp,path)
@@ -74,14 +74,14 @@ PY
 
 case "$ACTION" in
   tick)
-    # solo se la modalità è attiva (state.json esiste con active:true)
+    # only if the mode is active (state.json exists with active:true)
     [ -f "$STATE_FILE" ] || exit 0
     grep -Eq '"active"[[:space:]]*:[[:space:]]*true' "$STATE_FILE" || exit 0
-    # Il contatore avanza SEMPRE (serve a /azienda-audit per sapere da quanto
-    # non si audita). Ma il NUDGE non richiesto è OPT-IN: appare solo se
-    # l'utente lo ha attivato — un plugin che ti ricorda da solo di auditare se
-    # stesso è invadente. Attiva con: touch .claude/azienda/audit-nudge.on
-    # (o AZIENDA_AUDIT_NUDGE=on).
+    # The counter ALWAYS advances (used by /azienda-audit to know how long
+    # since the last audit). But the unsolicited NUDGE is OPT-IN: it appears
+    # only if the user has enabled it — a plugin that reminds itself to audit
+    # itself is intrusive. Enable with: touch .claude/azienda/audit-nudge.on
+    # (or AZIENDA_AUDIT_NUDGE=on).
     n=$(( $(read_int sessions) + 1 ))
     write_int sessions "$n"
     last=$(read_int last_audit_session)
@@ -89,43 +89,43 @@ case "$ACTION" in
     [ -f "$STATE_DIR/audit-nudge.on" ] && nudge_on=1
     [ "${AZIENDA_AUDIT_NUDGE:-}" = "on" ] && nudge_on=1
     if [ "$nudge_on" = "1" ] && [ $(( n - last )) -ge "$AUDIT_EVERY" ]; then
-      echo ">> [azienda] Sono passate $(( n - last )) sessioni dall'ultimo audit di"
-      echo ">> conformità alle policy. Quando ti fa comodo, lancia /azienda-audit."
+      echo ">> [azienda] $(( n - last )) sessions have passed since the last policy"
+      echo ">> compliance audit. Whenever convenient, run /azienda-audit."
     fi
     ;;
 
   report)
-    echo "[audit] Progetto: $PROJECT_DIR"
+    echo "[audit] Project: $PROJECT_DIR"
     if [ ! -f "$POLICIES_FILE" ]; then
-      echo "[audit] Nessun policies.md: fai prima /azienda on (crea il file dal template)."
+      echo "[audit] No policies.md: run /azienda on first (creates the file from the template)."
       exit 0
     fi
-    echo "[audit] Policy del progetto: $POLICIES_FILE"
-    echo "[audit] Ledger conformità: $LEDGER_FILE $( [ -f "$LEDGER_FILE" ] && echo '(esistente)' || echo '(nuovo)')"
-    echo "[audit] Sessioni totali: $(read_int sessions) | ultimo audit alla sessione: $(read_int last_audit_session)"
+    echo "[audit] Project policy: $POLICIES_FILE"
+    echo "[audit] Compliance ledger: $LEDGER_FILE $( [ -f "$LEDGER_FILE" ] && echo '(existing)' || echo '(new)')"
+    echo "[audit] Total sessions: $(read_int sessions) | last audit at session: $(read_int last_audit_session)"
     echo
-    echo ">> ISTRUZIONE (audit di conformità, NON automatico):"
-    echo ">> 1. Leggi policies.md (le regole dichiarate del progetto)."
-    echo ">> 2. Ripercorri il lavoro recente e confrontalo con quelle regole:"
-    echo ">>    - divieti rispettati? tracking aggiornato? escalation seguite?"
-    echo ">>    - hai RIUSATO l'esistente (skill/command/agenti/graft/myc/codedb)"
-    echo ">>      o costruito da zero? se da zero, era un buco reale?"
-    echo ">> 3. Scrivi un blocco datato in $LEDGER_FILE (append, non sovrascrivere):"
-    echo ">>    data, aderenze OK, DERIVE trovate (con motivo), OVERRIDE consapevoli."
-    echo ">> 4. Se una deriva è in realtà un pattern nuovo e valido, PROPONI"
-    echo ">>    all'utente di emendare policies.md — non farlo di tua iniziativa."
-    echo ">> 5. Quando hai scritto il ledger, esegui:"
+    echo ">> ISTRUZIONE (compliance audit, NOT automatic):"
+    echo ">> 1. Read policies.md (the project's declared rules)."
+    echo ">> 2. Retrace the recent work and compare it against those rules:"
+    echo ">>    - prohibitions respected? tracking updated? escalations followed?"
+    echo ">>    - did you REUSE what already existed (skill/command/agents/graft/myc/codedb)"
+    echo ">>      or build from scratch? if from scratch, was it a real gap?"
+    echo ">> 3. Write a dated block in $LEDGER_FILE (append, don't overwrite):"
+    echo ">>    date, OK compliances, DRIFTS found (with reason), conscious OVERRIDES."
+    echo ">> 4. If a drift is actually a new, valid pattern, PROPOSE to the user"
+    echo ">>    amending policies.md — don't do it on your own initiative."
+    echo ">> 5. Once you've written the ledger, run:"
     echo ">>    bash $SELF done"
     ;;
 
   done)
     n=$(read_int sessions)
     write_int last_audit_session "$n"
-    echo "[audit] Audit registrato alla sessione $n → contatore azzerato."
+    echo "[audit] Audit recorded at session $n → counter reset."
     ;;
 
   *)
-    echo "[audit] Sub-azione non valida: '$ACTION' (tick|report|done)"
+    echo "[audit] Invalid sub-action: '$ACTION' (tick|report|done)"
     exit 1
     ;;
 esac

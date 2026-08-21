@@ -1,25 +1,25 @@
 #!/usr/bin/env bash
-# toggle.sh — gestione stato modalità azienda (per-progetto).
-# Uso: toggle.sh on|off|status
+# toggle.sh — azienda mode state management (per-project).
+# Usage: toggle.sh on|off|status
 #
-# Scrive/legge ./.claude/azienda/state.json risolto sulla radice del progetto,
-# ed emette su stdout la direttiva da iniettare nella sessione corrente.
-# (Chiamato dallo slash command /azienda tramite iniezione `!`.)
+# Writes/reads ./.claude/azienda/state.json resolved against the project root,
+# and emits on stdout the directive to inject into the current session.
+# (Called by the /azienda slash command via `!` injection.)
 
 set -euo pipefail
 
 ACTION="${1:-status}"
 
-# --- Risoluzione radice progetto (deve combaciare con session_start.sh) ---
+# --- Project root resolution (must match session_start.sh) ---
 resolve_project_dir() {
   if [ -n "${CLAUDE_PROJECT_DIR:-}" ] && [ -d "${CLAUDE_PROJECT_DIR:-}" ]; then
     printf '%s' "$CLAUDE_PROJECT_DIR"
     return
   fi
-  # Uno stato azienda esistente è il segnale PIÙ specifico: risali cercandolo
-  # PRIMA del git toplevel, così un repo annidato (submodule) dentro un progetto
-  # azienda non fa sparire/sdoppiare la modalità. Nel caso normale (state.json
-  # nella root git) la risalita lo trova subito → stesso risultato.
+  # An existing azienda state is the MOST specific signal: walk up looking for
+  # it BEFORE the git toplevel, so a nested repo (submodule) inside an azienda
+  # project doesn't lose or duplicate the mode. In the normal case (state.json
+  # in the git root) the walk-up finds it right away → same result.
   local d="$PWD"
   while [ "$d" != "/" ]; do
     [ -f "$d/.claude/azienda/state.json" ] && { printf '%s' "$d"; return; }
@@ -38,50 +38,50 @@ STATE_DIR="$PROJECT_DIR/.claude/azienda"
 STATE_FILE="$STATE_DIR/state.json"
 POLICIES_FILE="$STATE_DIR/policies.md"
 
-# --- Radice plugin / persona (relative a questo script, no dipendenze env) ---
+# --- Plugin / persona root (relative to this script, no env dependencies) ---
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PLUGIN_ROOT="$(dirname "$SCRIPT_DIR")"
 PERSONA_FILE="$PLUGIN_ROOT/persona.md"
 POLICIES_TEMPLATE="$PLUGIN_ROOT/policies.template.md"
 
-# Crea il file policies del progetto dal template se non esiste ancora,
-# più un .gitignore che esclude lo stato personale (non le policy, che
-# possono essere condivise col team).
+# Creates the project's policies file from the template if it doesn't exist
+# yet, plus a .gitignore that excludes the personal state (not the policies,
+# which can be shared with the team).
 ensure_policies() {
   mkdir -p "$STATE_DIR"
   local gi="$STATE_DIR/.gitignore"
   [ -f "$gi" ] || printf 'state.json\n' > "$gi"
   [ -f "$POLICIES_FILE" ] && return
   if [ -f "$POLICIES_TEMPLATE" ]; then
-    # espande {{PROGETTO}} col basename della radice progetto
+    # expands {{PROGETTO}} with the basename of the project root
     _p=$(basename "$PROJECT_DIR" | sed 's/[&|]/\\&/g')
     sed "s|{{PROGETTO}}|$_p|g" "$POLICIES_TEMPLATE" > "$POLICIES_FILE"
-    echo "[azienda] Policies inizializzate dal template → $POLICIES_FILE"
+    echo "[azienda] Policies initialized from template → $POLICIES_FILE"
   fi
 }
 
-# Default tracking senza onboarding esplicito: se non ancora configurato, scrive
-# il backend di default (mycelium se `myc` c'è, altrimenti vault) nel file
-# condiviso. NON inizializza nulla di invasivo (niente `myc init`): per l'init
-# completo resta /azienda-onboard. Così /azienda on non richiede un 2º comando.
+# Default tracking without explicit onboarding: if not configured yet, writes
+# the default backend (mycelium if `myc` is present, otherwise vault) to the
+# shared file. Does NOT initialize anything invasive (no `myc init`): the full
+# init stays at /azienda-onboard. This way /azienda on doesn't need a 2nd command.
 auto_tracking() {
   local tf="$STATE_DIR/tracking"
-  [ -f "$tf" ] && return  # già configurato (o via onboarding esplicito)
+  [ -f "$tf" ] && return  # already configured (or via explicit onboarding)
   mkdir -p "$STATE_DIR"
   if command -v myc >/dev/null 2>&1; then
     printf 'mycelium\n' > "$tf"
-    echo "[azienda] Tracking default: mycelium (per l'init completo: /azienda-onboard)"
+    echo "[azienda] Default tracking: mycelium (for full init: /azienda-onboard)"
   else
     printf 'vault\n' > "$tf"
-    echo "[azienda] Tracking default: vault → ./.claude/azienda/vault/ (crealo con /azienda-onboard)"
+    echo "[azienda] Default tracking: vault → ./.claude/azienda/vault/ (create it with /azienda-onboard)"
   fi
 }
 
 now_iso() { date -u +%Y-%m-%dT%H:%M:%SZ; }
 
-# ponytail: python3 è il parser JSON vero (sempre presente su macOS/Linux);
-# grep/sed restano come fallback se python3 mancasse, robusti sul JSON che
-# scriviamo noi ma fragili su file editati a mano — per quello c'è python3.
+# ponytail: python3 is the real JSON parser (always present on macOS/Linux);
+# grep/sed remain as fallback if python3 were missing, robust on the JSON we
+# write ourselves but fragile on hand-edited files — that's what python3 is for.
 read_active() {
   [ -f "$STATE_FILE" ] || { echo "false"; return; }
   if command -v python3 >/dev/null 2>&1; then
@@ -103,11 +103,11 @@ read_activated_at() {
 }
 
 write_state() {
-  # $1 = true|false ; $2 = activated_at (stringa ISO o vuota per null)
+  # $1 = true|false ; $2 = activated_at (ISO string or empty for null)
   mkdir -p "$STATE_DIR"
   local active="$1" ts="$2"
-  # ponytail: python3 preserva chiavi extra (es. "tracking" dall'onboarding)
-  # che un off non deve azzerare; il printf resta come fallback.
+  # ponytail: python3 preserves extra keys (e.g. "tracking" from onboarding)
+  # that an off must not reset; the printf remains as fallback.
   if command -v python3 >/dev/null 2>&1; then
     python3 - "$STATE_FILE" "$active" "$ts" <<'PY' && return
 import json,sys,os
@@ -118,9 +118,9 @@ if os.path.exists(path):
     except Exception: d={}
 d["active"]= (active=="true")
 d["activated_at"]= ts if ts else None
-# scrittura atomica: tmp + os.replace. Un session_start.sh concorrente che legge
-# "active" durante un write non deve mai vedere JSON troncato (→ except → {} →
-# modalità letta come OFF, persona non iniettata).
+# atomic write: tmp + os.replace. A concurrent session_start.sh reading
+# "active" during a write must never see truncated JSON (→ except → {} →
+# mode read as OFF, persona not injected).
 tmp=path+".tmp"
 with open(tmp,'w') as f: json.dump(d,f,indent=2); f.write("\n")
 os.replace(tmp,path)
@@ -136,60 +136,60 @@ case "$ACTION" in
     write_state "true" "$(now_iso)"
     ensure_policies
     auto_tracking
-    echo "[azienda] Stato scritto: active=true → $STATE_FILE"
+    echo "[azienda] State written: active=true → $STATE_FILE"
     echo
     if [ -f "$PERSONA_FILE" ]; then
       _f=$(printf '%s' "${AZIENDA_FOUNDER:-Cris}" | sed 's/[&|]/\\&/g')
       sed "s|{{FOUNDER}}|$_f|g" "$PERSONA_FILE"
     fi
     echo
-    echo ">> ISTRUZIONE: assumi ORA la persona descritta sopra e mantienila per"
-    echo ">> il resto di questa sessione. LEGGI SUBITO le policy e i workflow"
-    echo ">> aziendali di questo progetto in $POLICIES_FILE e applicali."
-    echo ">> Gli script del plugin (roster/agents/memory/audit) sono in:"
-    echo ">> $PLUGIN_ROOT — usa quel percorso quando la persona cita 'scripts/X'."
-    echo ">> Conferma al founder in una riga."
+    echo ">> ISTRUZIONE: adopt the persona described above NOW and keep it for"
+    echo ">> the rest of this session. READ IMMEDIATELY this project's azienda"
+    echo ">> policies and workflows in $POLICIES_FILE and apply them."
+    echo ">> The plugin scripts (roster/agents/memory/audit) are in:"
+    echo ">> $PLUGIN_ROOT — use that path when the persona mentions 'scripts/X'."
+    echo ">> Confirm to the founder in one line."
     echo ">>"
-    echo ">> POI, se NON esiste già $STATE_DIR/organigramma.md, PROPONI al founder"
-    echo ">> il bootstrap automatico (scouting repo + decisione su chi assumere +"
-    echo ">> generazione organigramma) CHIEDENDO conferma: se accetta, esegui"
-    echo ">> \`bash $PLUGIN_ROOT/scripts/bootstrap.sh\` e segui la sua istruzione."
-    echo ">> Se rifiuta, resta disponibile via /azienda-bootstrap. Non lanciarlo"
-    echo ">> senza il sì del founder."
+    echo ">> THEN, if $STATE_DIR/organigramma.md does NOT exist yet, PROPOSE to"
+    echo ">> the founder the automatic bootstrap (repo scouting + deciding who to"
+    echo ">> hire + generating the org chart) ASKING for confirmation: if they"
+    echo ">> accept, run \`bash $PLUGIN_ROOT/scripts/bootstrap.sh\` and follow its"
+    echo ">> instruction. If they decline, stay available via /azienda-bootstrap."
+    echo ">> Do not run it without the founder's yes."
     ;;
 
   off)
     write_state "false" ""
-    echo "[azienda] Stato scritto: active=false → $STATE_FILE"
+    echo "[azienda] State written: active=false → $STATE_FILE"
     echo
-    echo ">> ISTRUZIONE: DEPONI la persona di Leader/CTO. Torna al tuo"
-    echo ">> comportamento di default per il resto di questa sessione. Non usare"
-    echo ">> più il subagent 'luogotenente' se non esplicitamente richiesto."
-    echo ">> Conferma al founder in una riga che la modalità azienda è disattivata."
+    echo ">> ISTRUZIONE: SET DOWN the Leader/CTO persona. Return to your default"
+    echo ">> behavior for the rest of this session. Do not use the 'luogotenente'"
+    echo ">> subagent anymore unless explicitly requested."
+    echo ">> Confirm to the founder in one line that azienda mode is disabled."
     ;;
 
   status)
     active="$(read_active)"
     ts="$(read_activated_at)"
     if [ "$active" = "true" ]; then
-      echo "[azienda] Modalità azienda: ATTIVA"
-      echo "[azienda] Progetto: $PROJECT_DIR"
-      echo "[azienda] Attivata: ${ts:-sconosciuta}"
-      echo "[azienda] Stato: $STATE_FILE"
+      echo "[azienda] azienda mode: ATTIVA"
+      echo "[azienda] Project: $PROJECT_DIR"
+      echo "[azienda] Activated: ${ts:-unknown}"
+      echo "[azienda] State: $STATE_FILE"
     elif [ -f "$STATE_FILE" ]; then
-      echo "[azienda] Modalità azienda: DISATTIVA"
-      echo "[azienda] Progetto: $PROJECT_DIR"
-      echo "[azienda] Stato: $STATE_FILE"
+      echo "[azienda] azienda mode: DISATTIVA"
+      echo "[azienda] Project: $PROJECT_DIR"
+      echo "[azienda] State: $STATE_FILE"
     else
-      echo "[azienda] Modalità azienda: DISATTIVA (nessuno stato per questo progetto)"
-      echo "[azienda] Progetto: $PROJECT_DIR"
+      echo "[azienda] azienda mode: DISATTIVA (no state for this project)"
+      echo "[azienda] Project: $PROJECT_DIR"
     fi
     echo
-    echo ">> ISTRUZIONE: riporta lo stato qui sopra al founder. Nessun cambio di comportamento."
+    echo ">> ISTRUZIONE: report the status above to the founder. No behavior change."
     ;;
 
   *)
-    echo "[azienda] Argomento non valido: '$ACTION'"
-    echo "[azienda] Uso: /azienda on|off|status"
+    echo "[azienda] Invalid argument: '$ACTION'"
+    echo "[azienda] Usage: /azienda on|off|status"
     ;;
 esac

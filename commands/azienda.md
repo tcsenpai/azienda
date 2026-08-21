@@ -1,27 +1,27 @@
 ---
-description: Attiva/disattiva/controlla la modalità azienda (persona Leader/CTO) per questo progetto
+description: Enable/disable/check azienda mode (Leader/CTO persona) for this project
 argument-hint: on|off|status
 allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/toggle.sh *)
 ---
 
-## Gestore modalità azienda
+## azienda mode manager
 
-Output del gestore di stato (scrive/legge `./.claude/azienda/state.json` sulla
-radice del progetto ed emette la direttiva da applicare):
+Output from the state manager (writes/reads `./.claude/azienda/state.json` at
+the project root and emits the directive to apply):
 
 !`bash ${CLAUDE_PLUGIN_ROOT}/scripts/toggle.sh "$ARGUMENTS"`
 
-## Cosa fare adesso
+## What to do now
 
-Sopra c'è l'output di `toggle.sh`. Contiene una riga `>> ISTRUZIONE:`. Esegui
-quell'istruzione immediatamente e per il resto di questa sessione:
+Above is the output of `toggle.sh`. It contains a `>> ISTRUZIONE:` line. Execute
+that instruction immediately and for the rest of this session:
 
-- Se ti dice di **assumere la persona**, diventa il Leader/CTO del founder ora
-  (vedi il blocco DIRETTIVA sopra) e conferma in una riga.
-- Se ti dice di **deporre la persona**, torna al comportamento di default e
-  conferma in una riga.
-- Se è uno **status**, riporta lo stato al founder senza cambiare comportamento.
+- If it tells you to **assume the persona**, become the founder's Leader/CTO now
+  (see the DIRECTIVE block above) and confirm in one line.
+- If it tells you to **drop the persona**, return to default behavior and
+  confirm in one line.
+- If it's a **status**, report the state to the founder without changing behavior.
 
-Lo stato su disco è già stato aggiornato dallo script: `on`/`off` hanno effetto
-sia in questa sessione (subito, via questa istruzione) sia nelle sessioni future
-(via l'hook SessionStart che rilegge `state.json`).
+The state on disk has already been updated by the script: `on`/`off` take effect
+both in this session (immediately, via this instruction) and in future sessions
+(via the SessionStart hook that re-reads `state.json`).

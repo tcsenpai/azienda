@@ -1,33 +1,33 @@
-<!-- FORMATO (letto da /azienda-mappa): sotto "## Figure e agenti" scrivi i ruoli
-     come LISTA `- <ruolo> → <agente> [| fallback: <alt>]` OPPURE come TABELLA
-     `| Ruolo | Agente |`. Entrambi vanno bene. Fuori da questi due formati, la
-     mappa non vede le righe (e /azienda-mappa avvisa se la sezione è vuota). -->
+<!-- FORMAT (read by /azienda-mappa): under "## Figure e agenti" write roles as
+     a LIST `- <role> → <agent> [| fallback: <alt>]` OR as a TABLE
+     `| Ruolo | Agente |`. Both work. Outside these two formats, the map
+     doesn't see the rows (and /azienda-mappa warns if the section is empty). -->
 # Organigramma — {{PROGETTO}}
 
-> Mappa RUOLO aziendale → agente consigliato per questo progetto. Versionabile
-> (condiviso col team via git), editabile a mano. È la ROSA da cui il Leader
-> pesca quando orchestra: non è un vincolo rigido — se l'agente ideale non
-> esiste più (verifica con `agents.sh`), scendi al fallback.
+> Map of company ROLE → recommended agent for this project. Versionable
+> (shared with the team via git), editable by hand. It's the ROSTER the
+> Leader draws from when orchestrating: it's not a rigid constraint — if the
+> ideal agent no longer exists (check with `agents.sh`), fall back.
 >
-> L'inventario REALE degli agenti su disco lo dà `scripts/agents.sh` del plugin.
-> Qui scrivi solo la MAPPA di intenti: quale figura ti serve per questo repo e
-> quale agente la copre meglio ORA.
+> The REAL inventory of on-disk agents is given by the plugin's
+> `scripts/agents.sh`. Here you only write the intent MAP: which figure this
+> repo needs and which agent covers it best RIGHT NOW.
 
 ## Figure e agenti
 
-Compila con i ruoli che questo progetto usa davvero. Formato per riga:
-`- <ruolo aziendale> → <agente consigliato> [| fallback: <alt>]`
+Fill in with the roles this project actually uses. Format per line:
+`- <company role> → <recommended agent> [| fallback: <alt>]`
 
-- Leader tecnico / orchestratore → (sei tu, la sessione principale)
-- Esecuzione confinata (edit/refactor nel repo) → luogotenente | fallback: general-purpose
-- Inventario tooling su disco → quartiermastro
-- …aggiungi qui le figure del progetto (BE, FE, UX, QA, security, devops,
-  performance, review, debug, docs, release) → agente scelto | fallback
+- Technical Leader / orchestrator → (you, the main session)
+- Confined execution (edit/refactor in the repo) → luogotenente | fallback: general-purpose
+- On-disk tooling inventory → quartiermastro
+- …add here the project's figures (backend, frontend, UX, QA, security,
+  devops, performance, review, debug, docs, release) → chosen agent | fallback
 
 ## Note
 
-- Un ruolo senza un agente dedicato usa il fallback (`luogotenente` o
-  `general-purpose`), non è un buco da riempire a forza.
-- Routing per costo: meccanico → agenti leggeri; analisi/edit → fascia media;
-  reasoning/sintesi/review adversariale → fascia alta. Mai la premium sul
-  meccanico.
+- A role without a dedicated agent uses the fallback (`luogotenente` or
+  `general-purpose`), it's not a gap that must be forcibly filled.
+- Cost routing: mechanical → light agents; analysis/edit → mid tier;
+  reasoning/synthesis/adversarial review → top tier. Never the premium tier
+  on mechanical work.

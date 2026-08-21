@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
-# onboard.sh — rilevamento ambiente per l'onboarding della modalità azienda.
+# onboard.sh — environment detection for azienda mode onboarding.
 #
-# NON decide da solo: raccoglie i fatti (mycelium presente? progetto già
-# inizializzato? tracking già configurato?) e li stampa in modo che lo slash
-# command /azienda-onboard possa porre le domande giuste all'user e poi agire.
+# Does NOT decide on its own: gathers the facts (mycelium present? project
+# already initialized? tracking already configured?) and prints them so the
+# /azienda-onboard slash command can ask the user the right questions and then act.
 #
-# Sub-azioni (arg $1):
-#   detect            (default) stampa lo stato dell'ambiente e le opzioni
-#   set-tracking <v>  scrive il backend nel file condiviso tracking (mycelium|vault)
-#   init-mycelium     esegue `myc init` (+ prime-agents) nel progetto
-#   init-vault        crea ./.claude/azienda/vault/ con un TASKS.md seed
+# Sub-actions (arg $1):
+#   detect            (default) prints the environment state and the options
+#   set-tracking <v>  writes the backend to the shared tracking file (mycelium|vault)
+#   init-mycelium     runs `myc init` (+ prime-agents) in the project
+#   init-vault        creates ./.claude/azienda/vault/ with a seed TASKS.md
 
 set -uo pipefail
 
@@ -37,19 +37,19 @@ STATE_DIR="$PROJECT_DIR/.claude/azienda"
 STATE_FILE="$STATE_DIR/state.json"
 VAULT_DIR="$STATE_DIR/vault"
 
-# Path assoluto di QUESTO script: le sub-azioni differite (init-mycelium,
-# init-vault, set-tracking) che il modello eseguirà più tardi devono usare
-# QUESTO, non ${CLAUDE_PLUGIN_ROOT} (vuoto nella shell delle Bash del modello).
+# Absolute path of THIS script: the deferred sub-actions (init-mycelium,
+# init-vault, set-tracking) that the model will run later must use THIS,
+# not ${CLAUDE_PLUGIN_ROOT} (empty in the model's Bash shell).
 SELF="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
 
 has_myc() { command -v myc >/dev/null 2>&1; }
 myc_project_ready() { [ -d "$PROJECT_DIR/.mycelium" ]; }
 
-# tracking vive in un file CONDIVISO (versionabile), non in state.json (personale,
-# gitignorato). Così in team la scelta del backend è condivisa via git. Legacy:
-# se il file condiviso manca, read_tracking() legge come fallback il vecchio
-# state.json.tracking (sola lettura: NON riscrive il file condiviso). La
-# migrazione vera avviene al primo set-tracking, che scrive il file condiviso.
+# tracking lives in a SHARED file (versionable), not in state.json (personal,
+# gitignored). This way in a team the backend choice is shared via git. Legacy:
+# if the shared file is missing, read_tracking() falls back to reading the old
+# state.json.tracking (read-only: does NOT rewrite the shared file). The real
+# migration happens on the first set-tracking, which writes the shared file.
 TRACKING_FILE="$STATE_DIR/tracking"
 
 read_tracking() {
@@ -57,7 +57,7 @@ read_tracking() {
     head -n1 "$TRACKING_FILE" | tr -d '[:space:]'
     return
   fi
-  # fallback legacy: state.json
+  # legacy fallback: state.json
   [ -f "$STATE_FILE" ] || { echo ""; return; }
   if command -v python3 >/dev/null 2>&1; then
     python3 -c 'import json,sys;print(json.load(open(sys.argv[1])).get("tracking") or "")' "$STATE_FILE" 2>/dev/null && return
@@ -67,9 +67,9 @@ read_tracking() {
 
 set_tracking() {
   mkdir -p "$STATE_DIR"
-  # Se l'onboarding avviene PRIMA di /azienda on, il .gitignore che esclude lo
-  # state.json (personale) non esiste ancora: crealo qui, così il file tracking
-  # condiviso è versionabile senza trascinare per errore lo stato personale.
+  # If onboarding happens BEFORE /azienda on, the .gitignore that excludes
+  # state.json (personal) doesn't exist yet: create it here, so the shared
+  # tracking file is versionable without accidentally dragging in the personal state.
   local gi="$STATE_DIR/.gitignore"
   [ -f "$gi" ] || printf 'state.json\n' > "$gi"
   printf '%s\n' "$1" > "$TRACKING_FILE"
@@ -77,31 +77,31 @@ set_tracking() {
 
 case "$ACTION" in
   detect)
-    echo "[onboard] Progetto: $PROJECT_DIR"
+    echo "[onboard] Project: $PROJECT_DIR"
     if has_myc; then
-      echo "[onboard] mycelium (myc): PRESENTE ($(myc --version 2>/dev/null))"
+      echo "[onboard] mycelium (myc): PRESENT ($(myc --version 2>/dev/null))"
       if myc_project_ready; then
-        echo "[onboard] mycelium: progetto GIÀ inizializzato (.mycelium/ presente)"
+        echo "[onboard] mycelium: project ALREADY initialized (.mycelium/ present)"
       else
-        echo "[onboard] mycelium: progetto NON ancora inizializzato"
+        echo "[onboard] mycelium: project NOT yet initialized"
       fi
-      echo "[onboard] Default consigliato: tracking = mycelium"
+      echo "[onboard] Recommended default: tracking = mycelium"
     else
-      echo "[onboard] mycelium (myc): ASSENTE nel PATH"
-      echo "[onboard] Default consigliato: tracking = vault (cartella per-progetto)"
+      echo "[onboard] mycelium (myc): ABSENT from PATH"
+      echo "[onboard] Recommended default: tracking = vault (per-project folder)"
     fi
     tr="$(read_tracking)"
     if [ -n "$tr" ]; then
-      echo "[onboard] Tracking già configurato (file condiviso): $tr"
+      echo "[onboard] Tracking already configured (shared file): $tr"
     else
-      echo "[onboard] Tracking non ancora configurato."
+      echo "[onboard] Tracking not yet configured."
     fi
     echo
-    echo ">> ISTRUZIONE: sopra ci sono i fatti dell'ambiente. Poni all'user le"
-    echo ">> domande di onboarding (vedi il comando), poi esegui la sub-azione"
-    echo ">> scelta: init-mycelium OPPURE init-vault, e infine set-tracking."
-    echo ">> Usa il percorso ASSOLUTO di questo script (NON \${CLAUDE_PLUGIN_ROOT},"
-    echo ">> vuoto nelle tue Bash):"
+    echo ">> ISTRUZIONE: above are the environment facts. Ask the user the"
+    echo ">> onboarding questions (see the command), then run the chosen"
+    echo ">> sub-action: init-mycelium OR init-vault, and finally set-tracking."
+    echo ">> Use the ABSOLUTE path of this script (NOT \${CLAUDE_PLUGIN_ROOT},"
+    echo ">> empty in your Bash):"
     echo ">>   bash $SELF init-mycelium   |   bash $SELF init-vault"
     echo ">>   bash $SELF set-tracking mycelium|vault"
     ;;
@@ -109,17 +109,17 @@ case "$ACTION" in
   set-tracking)
     case "$VALUE" in
       mycelium|vault) set_tracking "$VALUE"
-        echo "[onboard] tracking=$VALUE scritto in $TRACKING_FILE (condiviso)" ;;
-      *) echo "[onboard] valore tracking non valido: '$VALUE' (mycelium|vault)"; exit 1 ;;
+        echo "[onboard] tracking=$VALUE written to $TRACKING_FILE (shared)" ;;
+      *) echo "[onboard] invalid tracking value: '$VALUE' (mycelium|vault)"; exit 1 ;;
     esac
     ;;
 
   init-mycelium)
     if ! has_myc; then
-      echo "[onboard] myc non installato: impossibile init-mycelium. Usa init-vault."; exit 1
+      echo "[onboard] myc not installed: cannot init-mycelium. Use init-vault."; exit 1
     fi
     ( cd "$PROJECT_DIR" && myc init && myc prime-agents ) 2>&1
-    echo "[onboard] mycelium inizializzato nel progetto."
+    echo "[onboard] mycelium initialized in the project."
     ;;
 
   init-vault)
@@ -127,29 +127,29 @@ case "$ACTION" in
     SEED="$VAULT_DIR/TASKS.md"
     if [ ! -f "$SEED" ]; then
       cat > "$SEED" <<'EOF'
-# Task vault — modalità azienda
+# Task vault — azienda mode
 
-> Tracking per-progetto senza mycelium. Formato libero, tienilo denso.
-> Se poi installi mycelium, migra questi task con `myc task create ...`.
+> Per-project tracking without mycelium. Free-form, keep it dense.
+> If you later install mycelium, migrate these tasks with `myc task create ...`.
 
-## In corso
+## In progress
 - [ ] …
 
-## Da fare
+## To do
 - [ ] …
 
-## Fatto
+## Done
 - [x] …
 EOF
-      echo "[onboard] Vault creato → $SEED"
+      echo "[onboard] Vault created → $SEED"
     else
-      echo "[onboard] Vault già presente → $SEED"
+      echo "[onboard] Vault already present → $SEED"
     fi
     ;;
 
   *)
-    echo "[onboard] Sub-azione non valida: '$ACTION'"
-    echo "[onboard] Uso: onboard.sh detect|set-tracking <v>|init-mycelium|init-vault"
+    echo "[onboard] Invalid sub-action: '$ACTION'"
+    echo "[onboard] Usage: onboard.sh detect|set-tracking <v>|init-mycelium|init-vault"
     exit 1
     ;;
 esac

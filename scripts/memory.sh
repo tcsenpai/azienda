@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
-# memory.sh — memoria operativa per-progetto della modalità azienda.
+# memory.sh — per-project operational memory for azienda mode.
 #
-# Dà ai subagent (effimeri) continuità: lezioni, gotcha, "l'ultima volta X è
-# fallito". File-based e locale (./.claude/azienda/memory/lessons.md), zero
-# dipendenze. Se la skill obsidian-memory è presente, la segnala come canale
-# di ricerca ibrida opzionale — MAI obbligatorio, degrada senza.
+# Gives (ephemeral) subagents continuity: lessons, gotchas, "last time X
+# failed". File-based and local (./.claude/azienda/memory/lessons.md), zero
+# dependencies. If the obsidian-memory skill is present, flags it as an
+# optional hybrid-search channel — NEVER mandatory, degrades without it.
 #
-# Sub-azioni ($1):
-#   recall [query]   stampa le lezioni (o quelle che matchano query) a inizio task
-#   note <testo>     appende una lezione datata (scratchpad locale del progetto)
-#   where            stampa il percorso del file memoria
-#   promote          checklist per il Leader: promuovi la conoscenza durevole a
-#                    memoria long-term (hindsight + obsidian se presenti)
+# Sub-actions ($1):
+#   recall [query]   prints the lessons (or those matching query) at task start
+#   note <text>      appends a dated lesson (project's local scratchpad)
+#   where            prints the memory file's path
+#   promote          checklist for the Leader: promote durable knowledge to
+#                    long-term memory (hindsight + obsidian if present)
 
 set -uo pipefail
 
@@ -39,7 +39,7 @@ PROJECT_DIR="$(resolve_project_dir)"
 MEM_DIR="$PROJECT_DIR/.claude/azienda/memory"
 MEM_FILE="$MEM_DIR/lessons.md"
 
-# obsidian-memory presente? (skill utente). Solo per suggerimento, non richiesto.
+# obsidian-memory present? (user skill). Suggestion only, never required.
 has_obsidian() { [ -x "$HOME/.claude/skills/obsidian-memory/scripts/recall.sh" ]; }
 
 case "$ACTION" in
@@ -48,63 +48,63 @@ case "$ACTION" in
     ;;
 
   note)
-    [ -n "$ARG" ] || { echo "[memory] uso: memory.sh note <testo lezione>"; exit 1; }
+    [ -n "$ARG" ] || { echo "[memory] usage: memory.sh note <lesson text>"; exit 1; }
     mkdir -p "$MEM_DIR"
-    [ -f "$MEM_FILE" ] || printf '# Lezioni operative — memoria azienda del progetto\n\n> Continuità per i subagent effimeri: gotcha, cosa ha funzionato/fallito.\n> Append-only. Denso.\n\n' > "$MEM_FILE"
+    [ -f "$MEM_FILE" ] || printf '# Operational lessons — project azienda memory\n\n> Continuity for ephemeral subagents: gotchas, what worked/failed.\n> Append-only. Dense.\n\n' > "$MEM_FILE"
     printf -- '- [%s] %s\n' "$(date -u +%Y-%m-%d)" "$ARG" >> "$MEM_FILE"
-    echo "[memory] Lezione registrata → $MEM_FILE"
+    echo "[memory] Lesson recorded → $MEM_FILE"
     if has_obsidian; then
-      echo "[memory] (obsidian-memory presente: valuta di ritenerla anche lì per la"
-      echo "[memory]  ricerca ibrida cross-progetto — opzionale, vedi /obsidian-memory.)"
+      echo "[memory] (obsidian-memory present: consider retaining it there too for"
+      echo "[memory]  cross-project hybrid search — optional, see /obsidian-memory.)"
     fi
     ;;
 
   recall)
     if [ ! -f "$MEM_FILE" ]; then
-      echo "[memory] Nessuna lezione registrata per questo progetto."
-      has_obsidian && echo "[memory] (obsidian-memory presente: puoi cercare lì lezioni cross-progetto.)"
+      echo "[memory] No lessons recorded for this project."
+      has_obsidian && echo "[memory] (obsidian-memory present: you can search cross-project lessons there.)"
       exit 0
     fi
     if [ -n "$ARG" ]; then
-      echo "[memory] Lezioni che matchano '$ARG':"
-      grep -i -- "$ARG" "$MEM_FILE" || echo "[memory] (nessun match diretto; leggi il file intero se serve.)"
+      echo "[memory] Lessons matching '$ARG':"
+      grep -i -- "$ARG" "$MEM_FILE" || echo "[memory] (no direct match; read the whole file if needed.)"
     else
-      echo "[memory] Lezioni operative del progetto ($MEM_FILE):"
+      echo "[memory] Project operational lessons ($MEM_FILE):"
       cat "$MEM_FILE"
     fi
-    has_obsidian && echo "[memory] (per ricerca ibrida cross-progetto: /obsidian-memory recall '<query>')"
+    has_obsidian && echo "[memory] (for cross-project hybrid search: /obsidian-memory recall '<query>')"
     ;;
 
   promote)
-    # Checklist di PROMOZIONE a memoria long-term. La esegue il LEADER (unico a
-    # vedere gli MCP di sessione). Lo script rileva obsidian su disco; hindsight
-    # è un MCP → non visibile qui, lo verifica il Leader in sessione.
+    # PROMOTION checklist to long-term memory. Run by the LEADER (the only one
+    # who sees the session's MCPs). The script detects obsidian on disk; hindsight
+    # is an MCP → not visible here, the Leader verifies it in session.
     repo="$(basename "$PROJECT_DIR")"
-    echo "[memory] PROMOZIONE a memoria long-term — repo: $repo"
+    echo "[memory] PROMOTION to long-term memory — repo: $repo"
     echo
-    echo "Promuovi SOLO conoscenza durevole, ai momenti chiave (verbale riunione,"
-    echo "decisione architetturale, assessment/inventario quartiermastro, lezione"
-    echo "da un bug). NON lo scratchpad grezzo. Scrivi su ENTRAMBI i canali se ci"
-    echo "sono; se ne manca uno usa l'altro; se mancano entrambi, il locale."
+    echo "Promote ONLY durable knowledge, at key moments (meeting minutes,"
+    echo "architectural decision, quartiermastro assessment/inventory, lesson"
+    echo "from a bug). NOT the raw scratchpad. Write to BOTH channels if both"
+    echo "exist; if one is missing use the other; if both are missing, the local one."
     echo
-    echo "Canali long-term:"
-    echo "  - hindsight (MCP): se in sessione vedi tool mcp__hindsight__* → retain"
-    echo "    nel bank 'coding-$repo' (mcp__hindsight__retain / sync_retain)."
+    echo "Long-term channels:"
+    echo "  - hindsight (MCP): if you see mcp__hindsight__* tools in session → retain"
+    echo "    in the 'coding-$repo' bank (mcp__hindsight__retain / sync_retain)."
     if has_obsidian; then
-      echo "  - obsidian-memory: PRESENTE su disco → /obsidian-memory retain"
-      echo "    (o scripts/retain.sh) con type decision|lesson|project|entity."
+      echo "  - obsidian-memory: PRESENT on disk → /obsidian-memory retain"
+      echo "    (or scripts/retain.sh) with type decision|lesson|project|entity."
     else
-      echo "  - obsidian-memory: NON presente su disco."
+      echo "  - obsidian-memory: NOT present on disk."
     fi
-    echo "  - fallback locale (sempre): scripts/memory.sh note \"<lezione>\""
+    echo "  - local fallback (always): scripts/memory.sh note \"<lesson>\""
     echo
-    echo ">> ISTRUZIONE (Leader): decidi cosa è durevole, poi scrivi sui canali"
-    echo ">> disponibili. Se aggiorni una decisione già in memoria, aggiornala su"
-    echo ">> ENTRAMBI (o supersede coerente) — i due canali non devono divergere."
+    echo ">> ISTRUZIONE (Leader): decide what's durable, then write to the"
+    echo ">> available channels. If you update a decision already in memory,"
+    echo ">> update it on BOTH (or a coherent supersede) — the two channels must not diverge."
     ;;
 
   *)
-    echo "[memory] Sub-azione non valida: '$ACTION' (recall|note|where|promote)"
+    echo "[memory] Invalid sub-action: '$ACTION' (recall|note|where|promote)"
     exit 1
     ;;
 esac

@@ -1,30 +1,31 @@
 #!/usr/bin/env bash
-# org.sh — organigramma per-progetto + gestione multi-team della modalità azienda.
+# org.sh — per-project org chart + azienda mode multi-team management.
 #
-# L'organigramma mappa RUOLO aziendale → agente consigliato, per-progetto e
-# versionabile (come policies.md). I team ("a seconda del codice") sono aree del
-# repo con un path-glob di competenza e un proprio organigramma: quando il Leader
-# lavora su un file, il glob dice QUALE team è competente.
+# The org chart maps azienda ROLE → recommended agent, per-project and
+# versionable (like policies.md). Teams ("depending on the code") are repo
+# areas with a competence path-glob and their own org chart: when the Leader
+# works on a file, the glob says WHICH team is responsible.
 #
-# Statico e dichiarativo di proposito: l'assessment PROPONE, il founder conferma
-# ed edita i file a mano. Nessuna auto-inferenza a ogni task (fragile e costosa).
+# Deliberately static and declarative: the assessment PROPOSES, the founder
+# confirms and edits the files by hand. No auto-inference on every task
+# (fragile and costly).
 #
-# Sub-azioni ($1):
-#   show               stampa organigramma + team (o dice che vanno inizializzati)
-#   init               crea organigramma.md e teams.md dai template (non sovrascrive)
-#   which <path>       dice quale team è competente per un path (match sui glob)
-#   agents             passa la mano ad agents.sh (inventario reale su disco)
+# Sub-actions ($1):
+#   show               prints org chart + teams (or says they need to be initialized)
+#   init               creates organigramma.md and teams.md from templates (no overwrite)
+#   which <path>       says which team is responsible for a path (glob match)
+#   agents             hands off to agents.sh (real inventory on disk)
 #
-# NON scrive nulla di deciso da solo oltre ai template iniziali: i file sono del
-# founder. Idempotente: init non tocca file già esistenti.
+# Does NOT write anything decided on its own beyond the initial templates:
+# the files belong to the founder. Idempotent: init does not touch existing files.
 
 set -uo pipefail
 
 ACTION="${1:-show}"
 VALUE="${2:-}"
 
-# Path assoluto di QUESTO script e del plugin: le istruzioni differite al Leader
-# devono usare percorsi assoluti, non ${CLAUDE_PLUGIN_ROOT} (vuoto nelle Bash).
+# Absolute path of THIS script and of the plugin: deferred instructions to the
+# Leader must use absolute paths, not ${CLAUDE_PLUGIN_ROOT} (empty in Bash).
 SELF="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PLUGIN_ROOT="$(dirname "$SCRIPT_DIR")"
@@ -63,18 +64,19 @@ is_active() {
 }
 
 if ! is_active; then
-  echo "[org] Modalità azienda NON attiva in questo progetto."
-  echo "[org] org.sh ha senso solo in modalità azienda. Fai prima: /azienda on"
+  echo "[org] azienda mode NOT active in this project."
+  echo "[org] org.sh only makes sense in azienda mode. Run first: /azienda on"
   exit 3
 fi
 
-# Legge le righe team dal teams.md, SOLO dalla sezione "## Team" (non da
-# "## Organigramma per team", che ha righe con `:` diverse). Formato riga:
-# "- <nome> : <glob>[, <glob>...]". Ritorna righe "nome<TAB>glob" (una per glob).
+# Reads the team lines from teams.md, ONLY from the "## Team" section (not
+# from "## Organigramma per team", which has different `:` lines). Line
+# format: "- <name> : <glob>[, <glob>...]". Returns "name<TAB>glob" lines
+# (one per glob).
 parse_teams() {
   [ -f "$TEAMS_FILE" ] || return 0
-  # awk: dentro la sezione "## Team" (fino al prossimo heading ##), emette le
-  # righe "- nome : glob". Esclude di proposito "## Organigramma per team".
+  # awk: inside the "## Team" section (up to the next ## heading), emits the
+  # "- name : glob" lines. Deliberately excludes "## Organigramma per team".
   awk '
     /^##[[:space:]]/ {
       insec = ($0 ~ /^##[[:space:]]+Team([[:space:]]|$)/) ? 1 : 0
@@ -94,59 +96,59 @@ parse_teams() {
   done
 }
 
-# Estrae la ROSA (organigramma) di uno specifico team dalla sezione
-# "## Organigramma per team" → heading "### <team>". Emette le righe-ruolo
-# reali (escludendo i placeholder "(eredita...)"). Vuoto se il team non ha
-# override → il chiamante fa fallback all'organigramma di progetto.
+# Extracts the ROSTER (org chart) of a specific team from the
+# "## Organigramma per team" section → heading "### <team>". Emits the real
+# role lines (excluding the "(inherits...)" placeholders). Empty if the team
+# has no override → the caller falls back to the project org chart.
 team_roster() {
   local team="$1"
   [ -f "$TEAMS_FILE" ] || return 0
   awk -v team="$team" '
-    # entra nella sezione override solo dopo "## Organigramma per team"
+    # enters the override section only after "## Organigramma per team"
     /^##[[:space:]]/ {
       insec = ($0 ~ /Organigramma per team/) ? 1 : 0
       inteam = 0
       next
     }
     insec && /^###[[:space:]]/ {
-      # nome del team dopo "### "
+      # team name after "### "
       h = $0; sub(/^###[[:space:]]+/, "", h)
       gsub(/[[:space:]]+$/, "", h)
       inteam = (h == team) ? 1 : 0
       next
     }
     insec && inteam && /^[[:space:]]*-[[:space:]]/ {
-      # salta i placeholder di ereditarietà
+      # skip the inheritance placeholders
       if ($0 ~ /eredita/) next
       print
     }
   ' "$TEAMS_FILE" 2>/dev/null
 }
 
-# Stampa la rosa competente per un team: override del team se esiste,
-# altrimenti l'organigramma di progetto. $1 = nome team.
+# Prints the roster responsible for a team: team override if it exists,
+# otherwise the project org chart. $1 = team name.
 print_roster_for_team() {
   local team="$1" roster
   roster="$(team_roster "$team")"
   if [ -n "$roster" ]; then
-    echo "   Rosa del team '$team' (override in teams.md):"
+    echo "   Roster of team '$team' (override in teams.md):"
     printf '%s\n' "$roster" | sed 's/^/     /'
   elif [ -f "$ORG_FILE" ]; then
-    echo "   Rosa: eredita dall'organigramma di progetto ($ORG_FILE):"
-    # solo le righe-ruolo della sezione "## Figure e agenti" (non "## Note" ecc.)
+    echo "   Roster: inherited from the project org chart ($ORG_FILE):"
+    # only the role lines from the "## Figure e agenti" section (not "## Note" etc.)
     awk '
       /^##[[:space:]]/ { insec = ($0 ~ /Figure e agenti/) ? 1 : 0; next }
       insec && /^[[:space:]]*-[[:space:]]/ { print }
     ' "$ORG_FILE" 2>/dev/null | grep -vi 'aggiungi qui' | sed 's/^/     /'
   else
-    echo "   Rosa: nessun override e nessun organigramma.md — crealo con /azienda-org."
+    echo "   Roster: no override and no organigramma.md — create it with /azienda-org."
   fi
 }
 
-# match glob-vs-path robusto in bash. In bash `[[ == ]]` con `*` NON attraversa
-# i `/`, quindi non ci affidiamo a un semplice case: trattiamo i suffissi `/**`
-# e `/*` come match di PREFISSO (l'area del team = tutto sotto quella cartella),
-# e i pattern tipo `*.ext` anche sul basename (estensione a qualsiasi profondità).
+# robust glob-vs-path matching in bash. In bash `[[ == ]]` with `*` does NOT
+# cross `/`, so we don't rely on a plain case: we treat the `/**` and `/*`
+# suffixes as PREFIX matches (the team's area = everything under that folder),
+# and patterns like `*.ext` also on the basename (extension at any depth).
 path_matches_glob() {
   local path="$1" glob="$2"
   case "$glob" in
@@ -157,10 +159,10 @@ path_matches_glob() {
       local pre="${glob%/\*}"
       [[ "$path" == "$pre"/* ]] && return 0 ;;
   esac
-  # glob semplice (es. dir/file.txt) — match diretto (no attraversamento /)
+  # simple glob (e.g. dir/file.txt) — direct match (no crossing /)
   # shellcheck disable=SC2053
   [[ "$path" == $glob ]] && return 0
-  # *.ext → matcha l'estensione a qualsiasi profondità (sul basename)
+  # *.ext → matches the extension at any depth (on the basename)
   case "$glob" in
     \*.*) [[ "${path##*/}" == $glob ]] && return 0 ;;
   esac
@@ -169,25 +171,25 @@ path_matches_glob() {
 
 case "$ACTION" in
   show)
-    echo "[org] Progetto: $PROJECT_DIR"
+    echo "[org] Project: $PROJECT_DIR"
     echo
     if [ -f "$ORG_FILE" ]; then
       echo "=== Organigramma ($ORG_FILE) ==="
       cat "$ORG_FILE"
     else
-      echo "[org] Nessun organigramma: crealo con /azienda-org (init)."
+      echo "[org] No org chart: create it with /azienda-org (init)."
     fi
     echo
     if [ -f "$TEAMS_FILE" ]; then
       echo "=== Team ($TEAMS_FILE) ==="
       cat "$TEAMS_FILE"
     else
-      echo "[org] Nessun file team: monorepo/team singolo. Per definire più team: /azienda-org."
+      echo "[org] No teams file: monorepo/single team. To define multiple teams: /azienda-org."
     fi
     echo
-    echo ">> ISTRUZIONE: sopra c'è l'organigramma e la mappa dei team del progetto."
-    echo ">> Usali per scegliere gli agenti quando orchestri. L'inventario REALE"
-    echo ">> degli agenti su disco (per validare che esistano ancora) è dato da:"
+    echo ">> ISTRUZIONE: above is the project's org chart and team map."
+    echo ">> Use them to pick agents when orchestrating. The REAL inventory of"
+    echo ">> agents on disk (to validate they still exist) is given by:"
     echo ">>   bash $SCRIPT_DIR/agents.sh"
     ;;
 
@@ -195,57 +197,57 @@ case "$ACTION" in
     mkdir -p "$STATE_DIR"
     created=0
     if [ -f "$ORG_FILE" ]; then
-      echo "[org] organigramma.md già presente: non lo tocco."
+      echo "[org] organigramma.md already present: not touching it."
     elif [ -f "$ORG_TEMPLATE" ]; then
       _p=$(basename "$PROJECT_DIR" | sed 's/[&|]/\\&/g')
       sed "s|{{PROGETTO}}|$_p|g" "$ORG_TEMPLATE" > "$ORG_FILE"
-      echo "[org] CREATO: $ORG_FILE (dal template)"
+      echo "[org] CREATED: $ORG_FILE (from template)"
       created=1
     else
-      # template mancante (es. cache del plugin incompleta): NON restare muto.
-      echo "[org] ATTENZIONE: template organigramma non trovato ($ORG_TEMPLATE)."
-      echo "[org]   Il plugin in cache potrebbe essere incompleto. Aggiorna il plugin"
-      echo "[org]   (/plugin update azienda) o reinstalla. Puoi crearlo a mano: vedi il"
-      echo "[org]   formato in $PLUGIN_ROOT/organigramma.template.md se presente."
+      # missing template (e.g. incomplete plugin cache): do NOT stay silent.
+      echo "[org] WARNING: org chart template not found ($ORG_TEMPLATE)."
+      echo "[org]   The cached plugin might be incomplete. Update the plugin"
+      echo "[org]   (/plugin update azienda) or reinstall. You can create it by hand: see"
+      echo "[org]   the format in $PLUGIN_ROOT/organigramma.template.md if present."
     fi
     if [ -f "$TEAMS_FILE" ]; then
-      echo "[org] teams.md già presente: non lo tocco."
+      echo "[org] teams.md already present: not touching it."
     elif [ -f "$TEAMS_TEMPLATE" ]; then
       _p=$(basename "$PROJECT_DIR" | sed 's/[&|]/\\&/g')
       sed "s|{{PROGETTO}}|$_p|g" "$TEAMS_TEMPLATE" > "$TEAMS_FILE"
-      echo "[org] CREATO: $TEAMS_FILE (dal template)"
+      echo "[org] CREATED: $TEAMS_FILE (from template)"
       created=1
     else
-      echo "[org] ATTENZIONE: template teams non trovato ($TEAMS_TEMPLATE)."
-      echo "[org]   Il plugin in cache potrebbe essere incompleto (aggiorna/reinstalla)."
+      echo "[org] WARNING: teams template not found ($TEAMS_TEMPLATE)."
+      echo "[org]   The cached plugin might be incomplete (update/reinstall)."
     fi
     echo
     if [ "$created" = 1 ]; then
-      echo ">> ISTRUZIONE: i file sono seed da template. Fai un assessment dello"
-      echo ">> stack (bash $SCRIPT_DIR/assess.sh) e degli agenti reali"
-      echo ">> (bash $SCRIPT_DIR/agents.sh), poi PROPONI al founder ruoli→agenti e"
-      echo ">> una divisione in team basata sui path del repo. Scrivi nei file SOLO"
-      echo ">> ciò che conferma. Non inventare team non supportati dalla struttura."
+      echo ">> ISTRUZIONE: the files are seeded from templates. Do a stack"
+      echo ">> assessment (bash $SCRIPT_DIR/assess.sh) and a real-agents assessment"
+      echo ">> (bash $SCRIPT_DIR/agents.sh), then PROPOSE roles→agents and a team"
+      echo ">> split based on the repo's paths to the founder. Write in the files"
+      echo ">> ONLY what they confirm. Don't invent teams unsupported by the structure."
     else
-      echo ">> ISTRUZIONE: i file esistevano già; mostrali al founder (/azienda-org show)"
-      echo ">> e proponi modifiche solo se richiesto."
+      echo ">> ISTRUZIONE: the files already existed; show them to the founder"
+      echo ">> (/azienda-org show) and propose changes only if requested."
     fi
     ;;
 
   which)
-    [ -n "$VALUE" ] || { echo "[org] uso: org.sh which <path>"; exit 1; }
+    [ -n "$VALUE" ] || { echo "[org] usage: org.sh which <path>"; exit 1; }
     if [ ! -f "$TEAMS_FILE" ]; then
-      echo "[org] Nessun teams.md: team singolo. '$VALUE' → team unico (organigramma di progetto)."
-      print_roster_for_team "__nessuno__"   # nessun override → mostra organigramma di progetto
+      echo "[org] No teams.md: single team. '$VALUE' → single team (project org chart)."
+      print_roster_for_team "__nessuno__"   # no override → shows project org chart
       exit 0
     fi
-    # Raccogli i team che matchano (dedup: più glob dello stesso team contano 1).
+    # Collect the matching teams (dedup: multiple globs of the same team count as 1).
     matched=""
     while IFS=$'\t' read -r tname tglob; do
       [ -n "$tname" ] || continue
       if path_matches_glob "$VALUE" "$tglob"; then
         case " $matched " in
-          *" $tname "*) : ;;                       # già visto
+          *" $tname "*) : ;;                       # already seen
           *) matched="$matched $tname"
              echo "[org] '$VALUE' → team: $tname (glob: $tglob)" ;;
         esac
@@ -253,21 +255,21 @@ case "$ACTION" in
     done < <(parse_teams)
     matched="$(printf '%s' "$matched" | sed 's/^[[:space:]]*//')"
     if [ -z "$matched" ]; then
-      echo "[org] '$VALUE' → nessun team specifico matcha; usa l'organigramma di progetto (default)."
+      echo "[org] '$VALUE' → no specific team matches; use the project org chart (default)."
       print_roster_for_team "__nessuno__"
     else
-      # stampa la rosa di ciascun team competente
+      # print the roster of each responsible team
       for t in $matched; do
-        echo "[org] --- rosa competente per '$t' ---"
+        echo "[org] --- roster responsible for '$t' ---"
         print_roster_for_team "$t"
       done
     fi
     ;;
 
   roster)
-    # rosa per NOME team (via diretta per /azienda-riunione team=X).
-    [ -n "$VALUE" ] || { echo "[org] uso: org.sh roster <nome-team>"; exit 1; }
-    echo "[org] Rosa competente per il team '$VALUE':"
+    # roster by team NAME (direct path for /azienda-riunione team=X).
+    [ -n "$VALUE" ] || { echo "[org] usage: org.sh roster <team-name>"; exit 1; }
+    echo "[org] Roster responsible for team '$VALUE':"
     print_roster_for_team "$VALUE"
     ;;
 
@@ -276,14 +278,14 @@ case "$ACTION" in
     ;;
 
   office)
-    # "visione dell'azienda": mappa-ufficio statica da organigramma/teams.
-    # Passa gli argomenti restanti (ansi|svg|tsv, --heat, --drift, --no-color).
+    # "azienda view": static office map from org chart/teams.
+    # Passes the remaining args (ansi|svg|tsv, --heat, --drift, --no-color).
     shift 2>/dev/null || true
     exec bash "$SCRIPT_DIR/office.sh" "$@"
     ;;
 
   *)
-    echo "[org] Sub-azione non valida: '$ACTION' (show|init|which <path>|roster <team>|agents|office)"
+    echo "[org] Invalid sub-action: '$ACTION' (show|init|which <path>|roster <team>|agents|office)"
     exit 1
     ;;
 esac

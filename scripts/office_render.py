@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-# office_render.py — renderer della "visione dell'azienda".
-# Legge un TSV su stdin (TIPO \t nome \t agente/glob \t heat \t drift) e disegna
-# un ufficio top-down statico: la ROSA (ruolo→agente) come scrivanie in una
-# stanza, e i TEAM come stanze-area. Due modi: ansi | svg.
+# office_render.py — renderer for the "azienda view".
+# Reads a TSV from stdin (TYPE \t name \t agent/glob \t heat \t drift) and draws
+# a static top-down office: the ROSTER (role→agent) as desks in a room, and
+# TEAMS as area-rooms. Two modes: ansi | svg.
 #
 # argv: mode(ansi|svg)  nocolor(0|1)  project_name
-# Zero dipendenze oltre la stdlib. Non fallisce su input parziale.
+# Zero dependencies beyond the stdlib. Does not fail on partial input.
 
 import sys
 
@@ -26,7 +26,7 @@ def read_model():
                 h = 0
             teams.append({"name": name, "globs": extra, "heat": h, "members": []})
         elif typ == "teammember":
-            # name = nome team; extra = "ruolo|agente"
+            # name = team name; extra = "role|agent"
             role_agent = extra.split("|", 1)
             r = role_agent[0]
             for t in teams:
@@ -35,18 +35,18 @@ def read_model():
                     break
     return roles, teams
 
-# palette retro (indice ciclato per stanza)
+# retro palette (index cycled per room)
 PALETTE = [
-    ("#7b6cd9", 141),  # viola
-    ("#4a9d6e", 71),   # verde
-    ("#c9803a", 173),  # arancio
-    ("#3a8cc9", 74),   # azzurro
-    ("#b0505a", 131),  # rosso mattone
+    ("#7b6cd9", 141),  # violet
+    ("#4a9d6e", 71),   # green
+    ("#c9803a", 173),  # orange
+    ("#3a8cc9", 74),   # sky blue
+    ("#b0505a", 131),  # brick red
     ("#5aa0a0", 66),   # teal
     ("#9d6cb0", 139),  # magenta
-    ("#8a8a3a", 100),  # oliva
+    ("#8a8a3a", 100),  # olive
 ]
-HEAT_TINT_ANSI = {0: 238, 1: 179, 2: 208}  # cold grigio / warm giallo / hot arancio
+HEAT_TINT_ANSI = {0: 238, 1: 179, 2: 208}  # cold gray / warm yellow / hot orange
 
 def short(s, n):
     s = s.strip()
@@ -56,8 +56,8 @@ def short(s, n):
 def esc(code):
     return f"\033[{code}m"
 
-def ansi_room(title, subtitle, cells, color256, heat, nocolor, empty_label="(vuota)"):
-    # cella = (label, drift). Disegna una stanza box con scrivanie a 2 colonne.
+def ansi_room(title, subtitle, cells, color256, heat, nocolor, empty_label="(empty)"):
+    # cell = (label, drift). Draws a room box with desks in 2 columns.
     W = 30
     def c(s, code):
         return s if nocolor else esc(f"38;5;{code}") + s + esc("0")
@@ -65,14 +65,14 @@ def ansi_room(title, subtitle, cells, color256, heat, nocolor, empty_label="(vuo
     lines = []
     bar = "─" * (W - 2)
     lines.append(c("┌" + bar + "┐", color256))
-    # banda titolo colorata
+    # colored title band
     t = short(title, W - 4).center(W - 2)
     lines.append(c("│", color256) + (t if nocolor else esc(f"48;5;{top_code}") + esc("38;5;16") + t + esc("0")) + c("│", color256))
     if subtitle:
         st = short(subtitle, W - 4).center(W - 2)
         lines.append(c("│" + st + "│", color256))
     lines.append(c("├" + bar + "┤", color256))
-    # scrivanie: 2 per riga, avatar half-block + name tag
+    # desks: 2 per row, half-block avatar + name tag
     i = 0
     while i < len(cells):
         pair = cells[i:i+2]
@@ -102,26 +102,26 @@ def ansi_room(title, subtitle, cells, color256, heat, nocolor, empty_label="(vuo
 
 def render_ansi(roles, teams, project, nocolor):
     out = []
-    title = f"  VISIONE AZIENDA · {project}  "
+    title = f"  AZIENDA VIEW · {project}  "
     if not nocolor:
         title = esc("1;38;5;231") + esc("48;5;240") + title + esc("0")
     out.append(title)
     out.append("")
 
     rooms = []
-    # stanza rosa
+    # roster room
     cells = [(f"{short(r['role'],10)}", r["drift"], r.get("hl", False)) for r in roles]
-    rooms.append(("Ufficio · la Rosa", "ruolo → agente", cells, PALETTE[0][1], 0, "(nessun ruolo)"))
-    # stanze team — con la loro rosa dentro (fallback: eredita rosa progetto)
+    rooms.append(("Office · the Roster", "role → agent", cells, PALETTE[0][1], 0, "(no roles)"))
+    # team rooms — with their own roster inside (fallback: inherits project roster)
     for idx, t in enumerate(teams):
         col = PALETTE[(idx + 1) % len(PALETTE)][1]
         sub = short(t["globs"], 26)
         tcells = [(short(m["role"], 10), m["drift"], False) for m in t["members"]]
-        rooms.append((t["name"], sub, tcells, col, t["heat"], "(eredita rosa progetto)"))
+        rooms.append((t["name"], sub, tcells, col, t["heat"], "(inherits project roster)"))
 
-    # rendi ogni stanza (altezza già adattiva sul contenuto via ansi_room), poi
-    # impacca in 2 COLONNE masonry: ogni stanza va nella colonna più corta →
-    # niente buchi sotto le stanze piccole (fix layout, come per l'SVG).
+    # render each room (height already adaptive to content via ansi_room), then
+    # pack in 2 masonry COLUMNS: each room goes into the shortest column →
+    # no gaps under small rooms (layout fix, same as for the SVG).
     ROOM_W = 30
     rendered = []
     for (ti, st, ce, co, he, el) in rooms:
@@ -129,39 +129,39 @@ def render_ansi(roles, teams, project, nocolor):
         rendered.append(lines)
 
     NCOL = 2
-    columns = [[] for _ in range(NCOL)]   # ogni colonna = lista di righe-testo
+    columns = [[] for _ in range(NCOL)]   # each column = list of text lines
     col_h = [0] * NCOL
     for lines in rendered:
-        c = col_h.index(min(col_h))       # colonna più corta
+        c = col_h.index(min(col_h))       # shortest column
         columns[c].extend(lines)
-        columns[c].append("")             # spaziatura tra stanze
+        columns[c].append("")             # spacing between rooms
         col_h[c] += len(lines) + 1
 
-    # affianca le colonne riga per riga; pad a larghezza fissa ROOM_W.
+    # lays the columns side by side row by row; pads to fixed width ROOM_W.
     blank = " " * ROOM_W
     maxrows = max((len(c) for c in columns), default=0)
     for r in range(maxrows):
         parts = []
         for c in range(NCOL):
             cell = columns[c][r] if r < len(columns[c]) else ""
-            # pad alla larghezza visibile della stanza
+            # pad to the room's visible width
             padn = ROOM_W - _vis_len(cell, nocolor)
             parts.append(cell + (" " * padn if padn > 0 else ""))
         out.append("  ".join(parts).rstrip())
     out.append("")
 
-    # legenda
-    leg = "Legenda: ▄▀ agente · ⚠ drift (agente non su disco)"
+    # legend
+    leg = "Legend: ▄▀ agent · ⚠ drift (agent not on disk)"
     if teams and any(t["heat"] for t in teams):
-        leg += " · stanza: cold/warm/hot = attività git 90g"
+        leg += " · room: cold/warm/hot = git activity 90d"
     out.append(leg if nocolor else esc("2") + leg + esc("0"))
     return "\n".join(out)
 
 def _vis_len(s, nocolor):
-    # lunghezza visibile (approssima: se nocolor, len; altrimenti conta box width)
+    # visible length (approximates: if nocolor, len; otherwise counts box width)
     if nocolor:
         return len(s)
-    # rimuovi escape per stimare
+    # strip escapes to estimate
     import re
     return len(re.sub(r"\033\[[0-9;]*m", "", s))
 
@@ -169,26 +169,26 @@ def _vis_len(s, nocolor):
 def render_svg(roles, teams, project):
     pad = 20
     room_w = 240
-    DESK_W, DESK_H = 74, 44   # passo griglia scrivanie
-    HEAD_Y = 24               # banda titolo
-    BODY_TOP = 52             # offset prima scrivania dentro la stanza
+    DESK_W, DESK_H = 74, 44   # desk grid pitch
+    HEAD_Y = 24               # title band
+    BODY_TOP = 52             # offset of the first desk inside the room
     heat_fill = {0: "#2b2b30", 1: "#5a4a20", 2: "#6a3a18"}
 
-    # --- modello stanze ---
+    # --- room model ---
     raw = []
     cells = [(short(r["role"], 14), r["drift"], r.get("hl", False)) for r in roles]
-    raw.append(("Ufficio · la Rosa", "ruolo → agente", cells, PALETTE[0][0], 0, "(nessun ruolo)"))
+    raw.append(("Office · the Roster", "role → agent", cells, PALETTE[0][0], 0, "(no roles)"))
     for idx, t in enumerate(teams):
         tcells = [(short(m["role"], 14), m["drift"], False) for m in t["members"]]
-        raw.append((t["name"], short(t["globs"], 30), tcells, PALETTE[(idx+1) % len(PALETTE)][0], t["heat"], "(eredita rosa progetto)"))
+        raw.append((t["name"], short(t["globs"], 30), tcells, PALETTE[(idx+1) % len(PALETTE)][0], t["heat"], "(inherits project roster)"))
 
-    # colonne desk ADATTIVE: 1 desk→1 col, 2→2, 3+→3. room_h = f(n desk).
+    # ADAPTIVE desk columns: 1 desk→1 col, 2→2, 3+→3. room_h = f(n desks).
     def desk_cols(n):
         return 1 if n <= 1 else (2 if n == 2 else 3)
     def room_height(ce):
         n = len(ce)
         if n == 0:
-            return BODY_TOP + 30          # stanza-area/placeholder: bassa
+            return BODY_TOP + 30          # area-room/placeholder: short
         dcols = desk_cols(n)
         drows = (n + dcols - 1) // dcols
         return BODY_TOP + drows * DESK_H + 8
@@ -197,9 +197,9 @@ def render_svg(roles, teams, project):
     for (title, sub, ce, color, heat, el) in raw:
         sized.append((title, sub, ce, color, heat, el, room_height(ce), desk_cols(len(ce))))
 
-    # --- packing MASONRY su 2 colonne di stanze: metti ogni stanza nella
-    # colonna più corta. Elimina overflow (altezza reale) e buchi (colonne
-    # bilanciate per altezza, non per conteggio righe). ---
+    # --- MASONRY packing over 2 room columns: put each room in the shortest
+    # column. Eliminates overflow (real height) and gaps (columns balanced by
+    # height, not by row count). ---
     NCOL = 2
     col_x = [pad + c * (room_w + pad) for c in range(NCOL)]
     col_y = [pad + 40] * NCOL   # sotto il titolo pagina
@@ -219,7 +219,7 @@ def render_svg(roles, teams, project):
     s.append('<defs><pattern id="floor" width="16" height="16" patternUnits="userSpaceOnUse">'
              '<rect width="16" height="16" fill="#1e1e24"/>'
              '<rect width="8" height="8" fill="#22222a"/><rect x="8" y="8" width="8" height="8" fill="#22222a"/></pattern></defs>')
-    s.append(f'<text x="{pad}" y="28" fill="#f0f0f5" font-size="20" font-weight="bold">VISIONE AZIENDA · {esc_xml(project)}</text>')
+    s.append(f'<text x="{pad}" y="28" fill="#f0f0f5" font-size="20" font-weight="bold">AZIENDA VIEW · {esc_xml(project)}</text>')
 
     for rx, ry, (title, sub, ce, color, heat, empty_label, rh, dcols) in placed:
         floor = heat_fill.get(heat, "#1e1e24") if heat else "url(#floor)"
@@ -246,7 +246,7 @@ def render_svg(roles, teams, project):
         if not ce:
             s.append(f'<text x="{rx+room_w//2}" y="{ry+rh//2+8}" fill="#55555f" font-size="11" text-anchor="middle">{esc_xml(empty_label)}</text>')
 
-    s.append(f'<text x="{pad}" y="{H-8}" fill="#8a8a95" font-size="10">▄ agente  ⚠ drift  ·  stanza tint = attività git 90g (con --heat)</text>')
+    s.append(f'<text x="{pad}" y="{H-8}" fill="#8a8a95" font-size="10">▄ agent  ⚠ drift  ·  room tint = git activity 90d (with --heat)</text>')
     s.append('</svg>')
     return "\n".join(s)
 
