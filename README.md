@@ -101,6 +101,11 @@ Nessuno dei due vede gli MCP di sessione: quelli li vede solo il Leader.
 `organigramma.md` e `teams.md`: le scrivanie sono i ruoli (ruolo→agente), le
 stanze sono i team. Solo grafica, nessuna interattività.
 
+Ogni stanza-team mostra la **sua rosa** se il team ha un organigramma proprio
+(in `teams.md`, sezione `## Organigramma per team` → `### <team>`); altrimenti la
+stanza dice `(eredita rosa progetto)`. La stanza "Ufficio · la Rosa" mostra
+sempre la rosa di progetto.
+
 - Default: scena **ANSI** nel terminale (zero-dep; con `python3` è la mappa
   pixel-art, senza è una vista testuale).
 - `/azienda-mappa svg` → un file **SVG** pixel-art self-contained, apribile in

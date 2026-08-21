@@ -108,6 +108,34 @@ parse_teams() {
       -f "$SCRIPT_DIR/office_parse.awk" "$TEAMS_FILE"
 }
 
+# Rosa di UN team: righe "- ruolo → agente" sotto "## Organigramma per team" →
+# "### <team>" in teams.md. Stessa logica di org.sh team_roster (riuso). Emette
+# "ruolo \t agente" (accetta → o ->). Vuoto se il team non ha override.
+team_members() {
+  local team="$1"
+  [ -f "$TEAMS_FILE" ] || return 0
+  awk -v team="$team" '
+    /^##[[:space:]]/ {
+      insec = ($0 ~ /Organigramma per team/) ? 1 : 0; inteam = 0; next
+    }
+    insec && /^###[[:space:]]/ {
+      h=$0; sub(/^###[[:space:]]+/, "", h); gsub(/[[:space:]]+$/, "", h)
+      inteam = (h == team) ? 1 : 0; next
+    }
+    insec && inteam && /^[[:space:]]*-[[:space:]]/ {
+      if ($0 ~ /eredita/) next
+      line=$0; sub(/^[[:space:]]*-[[:space:]]*/, "", line)
+      role=line; agent=""
+      if (line ~ /→/)      { split(line,p,"→");  role=p[1]; agent=p[2] }
+      else if (line ~ /->/) { split(line,p,"->"); role=p[1]; agent=p[2] }
+      sub(/\|.*$/, "", agent)
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", role)
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", agent)
+      if (role != "") printf "%s\t%s\n", role, agent
+    }
+  ' "$TEAMS_FILE" 2>/dev/null
+}
+
 # heat di un team: commit recenti (90g) sulle sue glob. 0 se git assente o
 # nessuna glob. Bucket 0/1/2 (cold/warm/hot). MAI fallisce.
 team_heat() {
@@ -178,6 +206,14 @@ emit_tsv() {
     [ -n "$tname" ] || continue
     local h; h="$(team_heat "$globs")"
     printf 'team\t%s\t%s\t%s\t0\t0\n' "$tname" "$globs" "$h"
+    # membri della rosa del team (se dichiarata sotto "## Organigramma per team")
+    while IFS=$'\t' read -r trole tagent; do
+      [ -n "$trole" ] || continue
+      local tdrift=0
+      agent_missing "$tagent" && tdrift=1
+      # colonna 2 = nome team (per associare il membro alla stanza), 3 = "ruolo|agente"
+      printf 'teammember\t%s\t%s\t0\t%s\t0\n' "$tname" "$trole|$tagent" "$tdrift"
+    done < <(team_members "$tname")
   done < <(parse_teams)
 }
 
@@ -198,8 +234,11 @@ render_fallback_ansi() {
   echo "-- Rosa (ruolo → agente) --"
   emit_tsv | awk -F'\t' '$1=="role"{ d=($5=="1")?"  [!drift]":""; printf "  • %s → %s%s\n", $2, ($3==""?"(fallback)":$3), d }'
   echo
-  echo "-- Team / aree --"
-  emit_tsv | awk -F'\t' '$1=="team"{ h=($4=="2")?"hot":($4=="1")?"warm":"cold"; printf "  ▢ %-16s %s  [%s]\n", $2, $3, h }'
+  echo "-- Team / aree (con rosa se dichiarata) --"
+  emit_tsv | awk -F'\t' '
+    $1=="team"{ h=($4=="2")?"hot":($4=="1")?"warm":"cold"; printf "  ▢ %-16s %s  [%s]\n", $2, $3, h; had[$2]=0 }
+    $1=="teammember"{ split($3,ra,"|"); printf "      • %s → %s\n", ra[1], (ra[2]==""?"(fallback)":ra[2]); had[$2]=1 }
+  '
   echo
   echo "(python3 assente: vista testuale. Con python3 avresti la mappa ANSI.)"
 }

@@ -1,8 +1,9 @@
 <!-- FORMATO (letto da /azienda-mappa): sotto "## Team" scrivi i team come LISTA
-     `- <nome> : <glob>[, <glob>]` OPPURE come TABELLA `| Team | Glob |`. Le
-     stanze-team nella mappa escono "(vuota)" a meno che il team abbia una rosa
-     override qui sotto in "## Organigramma per team": è voluto — la stanza mostra
-     l'AREA del codice, le persone stanno nella rosa di progetto. -->
+     `- <nome> : <glob>[, <glob>]` OPPURE come TABELLA `| Team | Glob |`. Per
+     avere i MEMBRI dentro la stanza-team nella mappa, dai al team una rosa qui
+     sotto in "## Organigramma per team" → "### <nome team>" con righe
+     `- <ruolo> → <agente>`. Un team senza rosa mostra "(eredita rosa progetto)"
+     nella mappa, non "(vuota)". -->
 # Team — {{PROGETTO}}
 
 > Divisione del repo in TEAM "a seconda del codice": ogni team ha un'area di
