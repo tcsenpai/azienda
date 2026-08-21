@@ -1,131 +1,134 @@
-# Dipendenze opzionali
+# Optional dependencies
 
-Il plugin `azienda` funziona **senza nessuna** di queste: ogni integrazione è
-rilevata a runtime e **degrada in silenzio** se il tool manca (mai un errore).
-Ma se le installi, il plugin le usa automaticamente — sono già cablate nel
-codice. Qui trovi cosa sblocca ciascuna e come installarla.
+The `azienda` plugin works **without any** of these: every integration is
+detected at runtime and **degrades silently** if the tool is missing (never an
+error). But if you install them, the plugin uses them automatically — they're
+already wired into the code. Here's what each one unlocks and how to install
+it.
 
-Come il plugin le rileva:
-- **CLI su disco** (`myc`, `graft`, `bw`, `python3`): via `command -v`.
-- **Skill utente** (`obsidian-memory`): via file in `~/.claude/skills/...`.
-- **MCP di sessione** (`hindsight`, `codedb`, `graft`): visibili solo al Leader
-  in sessione (i tool `mcp__*`), non agli script.
+How the plugin detects them:
+- **CLI on disk** (`myc`, `graft`, `bw`, `python3`): via `command -v`.
+- **User skill** (`obsidian-memory`): via a file in `~/.claude/skills/...`.
+- **Session MCP** (`hindsight`, `codedb`, `graft`): visible only to the Leader
+  in-session (the `mcp__*` tools), not to the scripts.
 
 ---
 
 ## mycelium (`myc`) — task tracking
 
-**Cosa sblocca:** `/azienda-onboard` usa mycelium come backend di tracking dei
-task se `myc` è installato (altrimenti crea un vault Markdown locale). Gli action
-item delle riunioni ci finiscono dentro.
+**What it unlocks:** `/azienda-onboard` uses mycelium as the task-tracking
+backend if `myc` is installed (otherwise it creates a local Markdown vault).
+Meeting action items end up there.
 
-**Installa:** è un CLI Rust single-binary.
+**Install:** it's a single-binary Rust CLI.
 
 ```bash
-# serve una toolchain Rust (rustup)
+# needs a Rust toolchain (rustup)
 cargo install --git https://github.com/tcsenpai/mycelium
-# verifica
+# verify
 myc --version
 ```
 
-Senza `myc`: il tracking usa `./.claude/azienda/vault/TASKS.md`. Nessuna perdita
-di funzione, solo un backend diverso.
+Without `myc`: tracking uses `./.claude/azienda/vault/TASKS.md`. No loss of
+functionality, just a different backend.
 
 ---
 
-## graft — code intelligence (assessment strutturale)
+## graft — code intelligence (structural assessment)
 
-**Cosa sblocca:** `/azienda-bootstrap` e `/azienda-onboard` fanno un assessment
-del repo più profondo (architettura, moduli, hub) usando graft se il repo è
-**indicizzato**, invece della semplice lista di file.
+**What it unlocks:** `/azienda-bootstrap` and `/azienda-onboard` run a deeper
+repo assessment (architecture, modules, hubs) using graft if the repo is
+**indexed**, instead of a plain file listing.
 
-**Installa** (CLI + indicizzazione del repo):
+**Install** (CLI + repo indexing):
 
 ```bash
-# installa il CLI graft (vedi il suo repo per il metodo aggiornato)
-# poi, nella root del progetto dove userai azienda:
-graft build          # costruisce il grafo (cartella graft/, git-ignorata)
+# install the graft CLI (see its repo for the current method)
+# then, in the project root where you'll use azienda:
+graft build          # builds the graph (graft/ folder, git-ignored)
 ```
 
-graft espone anche tool MCP (`mcp__graft__*`): se configuri il server MCP in
-Claude Code, il Leader li usa direttamente. Senza graft: assessment best-effort
-sui fatti grezzi del repo.
+graft also exposes MCP tools (`mcp__graft__*`): if you configure the MCP
+server in Claude Code, the Leader uses them directly. Without graft:
+best-effort assessment on raw repo facts.
 
 ---
 
 ## codedb — code intelligence (MCP)
 
-**Cosa sblocca:** assessment strutturale alternativo/complementare a graft
-(`outline`, `search`, `context`). È un **server MCP**: il Leader lo usa se in
-sessione vede i tool `mcp__codedb__*`.
+**What it unlocks:** an alternative/complementary structural assessment to
+graft (`outline`, `search`, `context`). It's an **MCP server**: the Leader
+uses it if it sees the `mcp__codedb__*` tools in session.
 
-**Installa:** configura il server MCP codedb in Claude Code (vedi la doc di
-codedb). Non è un pacchetto da `command -v`: la sua presenza è solo di sessione.
-Senza: usa graft, o l'assessment best-effort.
-
----
-
-## Memoria long-term: hindsight + obsidian-memory
-
-**Cosa sblocca:** la **promozione** della conoscenza durevole (decisioni,
-inventario del quartiermastro, lezioni) a memoria persistente cross-sessione.
-Vedi la sezione _Memoria (due livelli)_ del README. Il plugin scrive su
-**entrambi** i canali se presenti; se manca uno usa l'altro; se mancano
-entrambi, resta la memoria locale (`scripts/memory.sh note`).
-
-**hindsight** — è un **server MCP**. Il Leader lo usa se in sessione vede i tool
-`mcp__hindsight__*` (retain nel bank `coding-<repo>`). Configura il server MCP
-hindsight in Claude Code.
-
-**obsidian-memory** — è una **skill utente**. Il plugin la rileva se esiste
-`~/.claude/skills/obsidian-memory/scripts/recall.sh`. Installa la skill nel tuo
-`~/.claude/skills/`.
-
-Senza né l'uno né l'altro: la memoria resta locale al progetto
-(`./.claude/azienda/memory/`), versionabile ma non cross-progetto.
+**Install:** configure the codedb MCP server in Claude Code (see codedb's
+docs). It's not a package detectable via `command -v`: its presence is
+session-only. Without it: falls back to graft, or best-effort assessment.
 
 ---
 
-## Bitwarden CLI (`bw`) — segreti
+## Long-term memory: hindsight + obsidian-memory
 
-**Cosa sblocca:** quando la persona deve **leggere** un segreto al volo, se `bw`
-è installato è il canale preferito (via la skill `/bitwarden-cli`), invece di
-env var o del gestore indicato nelle policy.
+**What it unlocks:** the **promotion** of durable knowledge (decisions, the
+quartermaster's inventory, lessons) to persistent cross-session memory. See
+the _Memory (two levels)_ section of the README. The plugin writes to
+**both** channels if present; if one is missing it uses the other; if both
+are missing, it stays with local memory (`scripts/memory.sh note`).
 
-**Installa:**
+**hindsight** — it's an **MCP server**. The Leader uses it if it sees the
+`mcp__hindsight__*` tools in session (retain into the `coding-<repo>` bank).
+Configure the hindsight MCP server in Claude Code.
+
+**obsidian-memory** — it's a **user skill**. The plugin detects it if
+`~/.claude/skills/obsidian-memory/scripts/recall.sh` exists. Install the
+skill in your `~/.claude/skills/`.
+
+Without either: memory stays local to the project
+(`./.claude/azienda/memory/`), versionable but not cross-project.
+
+---
+
+## Bitwarden CLI (`bw`) — secrets
+
+**What it unlocks:** when the persona needs to **read** a secret on the fly,
+if `bw` is installed it's the preferred channel (via the `/bitwarden-cli`
+skill), instead of env vars or the manager indicated in the policies.
+
+**Install:**
 
 ```bash
 # npm
 npm install -g @bitwarden/cli
-# oppure Homebrew
+# or Homebrew
 brew install bitwarden-cli
-# verifica
+# verify
 bw --version
 ```
 
-Senza `bw`: si usano env var o il gestore che le policy del progetto indicano.
-Il plugin non scrive mai segreti in chiaro, con o senza Bitwarden.
+Without `bw`: env vars or the manager indicated by the project's policies are
+used instead. The plugin never writes secrets in plaintext, with or without
+Bitwarden.
 
 ---
 
-## python3 — parsing robusto dello stato + mappa-ufficio
+## python3 — robust state parsing + office map
 
-**Cosa sblocca:** (1) gli script leggono `state.json` con `python3` quando c'è
-(parse JSON affidabile), senza cadono su `grep`; (2) `/azienda-mappa` usa
-`python3` per il rendering pixel-art (ANSI e SVG) — senza, la mappa degrada a una
-vista testuale semplice (l'SVG richiede `python3`). È quasi sempre già presente
-sui sistemi di sviluppo — non serve installarlo apposta.
+**What it unlocks:** (1) scripts read `state.json` with `python3` when
+available (reliable JSON parsing), falling back to `grep` otherwise; (2)
+`/azienda-mappa` uses `python3` for pixel-art rendering (ANSI and SVG) —
+without it, the map degrades to a simple text view (the SVG requires
+`python3`). It's almost always already present on development systems — no
+need to install it specifically.
 
 ---
 
-## Riepilogo
+## Summary
 
-| Dep              | Tipo         | Sblocca                                  | Senza →                          |
-|------------------|--------------|------------------------------------------|----------------------------------|
-| `myc` (mycelium) | CLI          | tracking task via mycelium               | vault Markdown locale            |
-| graft            | CLI + MCP    | assessment strutturale del repo          | assessment best-effort           |
-| codedb           | MCP          | assessment strutturale (alt.)            | graft / best-effort              |
-| hindsight        | MCP          | memoria long-term (canale 1)             | obsidian / locale                |
-| obsidian-memory  | skill utente | memoria long-term (canale 2)             | hindsight / locale               |
-| `bw` (Bitwarden) | CLI          | lettura segreti al volo                  | env var / gestore da policy      |
-| `python3`        | CLI          | parse JSON robusto dello stato           | fallback grep                    |
+| Dep               | Type          | Unlocks                                  | Without →                         |
+|--------------------|---------------|--------------------------------------------|--------------------------------------|
+| `myc` (mycelium)   | CLI           | task tracking via mycelium                 | local Markdown vault                 |
+| graft              | CLI + MCP     | structural repo assessment                 | best-effort assessment               |
+| codedb             | MCP           | structural assessment (alt.)               | graft / best-effort                  |
+| hindsight          | MCP           | long-term memory (channel 1)               | obsidian / local                     |
+| obsidian-memory    | user skill    | long-term memory (channel 2)               | hindsight / local                    |
+| `bw` (Bitwarden)   | CLI           | on-the-fly secret reading                  | env var / policy-defined manager     |
+| `python3`          | CLI           | robust JSON parsing of state               | grep fallback                        |
