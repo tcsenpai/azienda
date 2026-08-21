@@ -58,18 +58,33 @@ Non c'è un framework: i test sono **check runnable** mirati.
 Un test verde vale solo se ha **eseguito** il codice: assicurati che il caso ON
 raggiunga davvero il ramo che stai verificando, non che si fermi al gate.
 
-## Hook di coerenza doc (nativo del plugin)
+## Hook di coerenza doc (dev-tool, opzionale)
 
-Il plugin registra un hook **Stop** (`scripts/stop-check-docs.sh`, dichiarato in
-`hooks/hooks.json`): a fine turno, se hai modifiche non committate a
-comandi/script/agenti/persona o ai doc, **ricorda a Claude** di rileggere
-`README.md` e `OPTIONALS.md` e verificarne la coerenza prima di committare.
+`dev/stop-check-docs.sh` è un **dev-tool** (non fa parte del plugin distribuito):
+un hook **Stop** di Claude che, a fine turno — **solo se stai sviluppando questo
+repo** (identità verificata dal remote `tcsenpai/azienda`) e hai modifiche non
+committate a comandi/script/agenti/workflow/persona o ai doc — **ricorda a
+Claude** di rileggere `README.md` e `OPTIONALS.md` e verificarne la coerenza
+della **prosa** prima di committare.
 
-A differenza di un git hook (bash cieco), questo parla a Claude, che può
-valutare la coerenza della **prosa**, non solo la presenza di un riferimento. È
-innocuo fuori da questo repo: se non esistono sia `README.md` sia `OPTIONALS.md`,
-non dice nulla. Si attiva da solo quando il plugin è installato (dopo un
-`sync-to-cache.sh` in sviluppo, o via `/plugin install`).
+Lo script è versionato (nel repo); il **collegamento** è locale al tuo clone
+(`.claude/settings.json`, non versionato). Per attivarlo, aggiungi al tuo
+`.claude/settings.json` un blocco Stop:
+
+```json
+{
+  "hooks": {
+    "Stop": [
+      { "hooks": [ { "type": "command",
+        "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/dev/stop-check-docs.sh\"" } ] }
+    ]
+  }
+}
+```
+
+(Se hai già altri hook Stop, aggiungi solo l'oggetto dentro l'array, non
+sovrascrivere.) Il gate sul remote fa sì che non scatti in nessun altro repo,
+anche se ha `README.md` + `OPTIONALS.md`.
 
 ## Versioning
 
