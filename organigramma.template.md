@@ -1,3 +1,7 @@
+<!-- FORMATO (letto da /azienda-mappa): sotto "## Figure e agenti" scrivi i ruoli
+     come LISTA `- <ruolo> → <agente> [| fallback: <alt>]` OPPURE come TABELLA
+     `| Ruolo | Agente |`. Entrambi vanno bene. Fuori da questi due formati, la
+     mappa non vede le righe (e /azienda-mappa avvisa se la sezione è vuota). -->
 # Organigramma — {{PROGETTO}}
 
 > Mappa RUOLO aziendale → agente consigliato per questo progetto. Versionabile
