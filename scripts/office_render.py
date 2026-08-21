@@ -24,7 +24,15 @@ def read_model():
                 h = int(heat)
             except ValueError:
                 h = 0
-            teams.append({"name": name, "globs": extra, "heat": h})
+            teams.append({"name": name, "globs": extra, "heat": h, "members": []})
+        elif typ == "teammember":
+            # name = nome team; extra = "ruolo|agente"
+            role_agent = extra.split("|", 1)
+            r = role_agent[0]
+            for t in teams:
+                if t["name"] == name:
+                    t["members"].append({"role": r, "drift": drift == "1"})
+                    break
     return roles, teams
 
 # palette retro (indice ciclato per stanza)
@@ -48,7 +56,7 @@ def short(s, n):
 def esc(code):
     return f"\033[{code}m"
 
-def ansi_room(title, subtitle, cells, color256, heat, nocolor):
+def ansi_room(title, subtitle, cells, color256, heat, nocolor, empty_label="(vuota)"):
     # cella = (label, drift). Disegna una stanza box con scrivanie a 2 colonne.
     W = 30
     def c(s, code):
@@ -87,7 +95,7 @@ def ansi_room(title, subtitle, cells, color256, heat, nocolor):
         lines.append(c("│", color256) + row_tag + c("│", color256))
         i += 2
     if not cells:
-        empty = "(vuota)".center(W - 2)
+        empty = short(empty_label, W - 2).center(W - 2)
         lines.append(c("│" + empty + "│", color256))
     lines.append(c("└" + bar + "┘", color256))
     return lines, W
@@ -103,18 +111,19 @@ def render_ansi(roles, teams, project, nocolor):
     rooms = []
     # stanza rosa
     cells = [(f"{short(r['role'],10)}", r["drift"], r.get("hl", False)) for r in roles]
-    rooms.append(("Ufficio · la Rosa", "ruolo → agente", cells, PALETTE[0][1], 0))
-    # stanze team
+    rooms.append(("Ufficio · la Rosa", "ruolo → agente", cells, PALETTE[0][1], 0, "(nessun ruolo)"))
+    # stanze team — con la loro rosa dentro (fallback: eredita rosa progetto)
     for idx, t in enumerate(teams):
         col = PALETTE[(idx + 1) % len(PALETTE)][1]
         sub = short(t["globs"], 26)
-        rooms.append((t["name"], sub, [], col, t["heat"]))
+        tcells = [(short(m["role"], 10), m["drift"], False) for m in t["members"]]
+        rooms.append((t["name"], sub, tcells, col, t["heat"], "(eredita rosa progetto)"))
 
     # rendi ogni stanza in blocco-righe, poi affianca 2 per riga (il trucco:
     # trasponi gli array di righe). ponytail: 2 stanze per fila, wrap.
     rendered = []
-    for (ti, st, ce, co, he) in rooms:
-        lines, w = ansi_room(ti, st, ce, co, he, nocolor)
+    for (ti, st, ce, co, he, el) in rooms:
+        lines, w = ansi_room(ti, st, ce, co, he, nocolor, el)
         rendered.append(lines)
 
     PERROW = 2
@@ -150,9 +159,10 @@ def render_svg(roles, teams, project):
     per_row = 2
     rooms = []
     cells = [(short(r["role"], 14), r["drift"], r.get("hl", False)) for r in roles]
-    rooms.append(("Ufficio · la Rosa", "ruolo → agente", cells, PALETTE[0][0], 0))
+    rooms.append(("Ufficio · la Rosa", "ruolo → agente", cells, PALETTE[0][0], 0, "(nessun ruolo)"))
     for idx, t in enumerate(teams):
-        rooms.append((t["name"], short(t["globs"], 30), [], PALETTE[(idx+1) % len(PALETTE)][0], t["heat"]))
+        tcells = [(short(m["role"], 14), m["drift"], False) for m in t["members"]]
+        rooms.append((t["name"], short(t["globs"], 30), tcells, PALETTE[(idx+1) % len(PALETTE)][0], t["heat"], "(eredita rosa progetto)"))
 
     cols = per_row
     rows = (len(rooms) + cols - 1) // cols
@@ -169,7 +179,7 @@ def render_svg(roles, teams, project):
              '<rect width="8" height="8" fill="#22222a"/><rect x="8" y="8" width="8" height="8" fill="#22222a"/></pattern></defs>')
     s.append(f'<text x="{pad}" y="28" fill="#f0f0f5" font-size="20" font-weight="bold">VISIONE AZIENDA · {esc_xml(project)}</text>')
 
-    for i, (title, sub, ce, color, heat) in enumerate(rooms):
+    for i, (title, sub, ce, color, heat, empty_label) in enumerate(rooms):
         rx = pad + (i % cols) * (room_w + pad)
         ry = pad + 40 + (i // cols) * (room_h + pad)
         floor = heat_fill.get(heat, "#1e1e24") if heat else "url(#floor)"
@@ -199,7 +209,7 @@ def render_svg(roles, teams, project):
             # name tag
             s.append(f'<text x="{cx+26}" y="{cy+42}" fill="#e0e0e8" font-size="9" text-anchor="middle">{esc_xml(label)}</text>')
         if not ce:
-            s.append(f'<text x="{rx+room_w//2}" y="{ry+room_h//2+20}" fill="#55555f" font-size="11" text-anchor="middle">area</text>')
+            s.append(f'<text x="{rx+room_w//2}" y="{ry+room_h//2+20}" fill="#55555f" font-size="11" text-anchor="middle">{esc_xml(empty_label)}</text>')
 
     # legenda
     ly = H - 8

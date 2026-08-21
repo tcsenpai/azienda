@@ -1,6 +1,6 @@
 {
   "name": "azienda",
-  "version": "0.9.1",
+  "version": "0.10.0",
   "description": "Attiva una 'azienda mode' persistente e per-progetto: Claude assume la persona di Leader/CTO del founder, con esecuzione operativa delegata a un subagent a toolset ristretto. Lo stato vive su disco (./.claude/azienda/state.json) e un hook SessionStart lo rilegge a ogni avvio.",
   "author": {
     "name": "Cris",
