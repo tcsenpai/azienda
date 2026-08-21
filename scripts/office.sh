@@ -148,23 +148,39 @@ team_members() {
   ' "$TEAMS_FILE" 2>/dev/null
 }
 
-# heat di un team: commit recenti (90g) sulle sue glob. 0 se git assente o
-# nessuna glob. Bucket 0/1/2 (cold/warm/hot). MAI fallisce.
-team_heat() {
+# commit recenti (90g) sulle glob di un team → conteggio GREZZO (non bucket).
+# 0 se heat off / git assente / nessuna glob. MAI fallisce. La bucketizzazione
+# (relativa al max del set + floor) la fa emit_tsv, che vede TUTTI i team.
+team_commits() {
   local globs="$1"
   [ "$HEAT" = 1 ] || { echo 0; return; }
   command -v git >/dev/null 2>&1 || { echo 0; return; }
   git -C "$PROJECT_DIR" rev-parse --git-dir >/dev/null 2>&1 || { echo 0; return; }
   [ -n "$globs" ] || { echo 0; return; }
-  # split glob su virgola, passa come pathspec
   local IFS=','; local arr=($globs); local n
-  # conteggio righe con awk (una sola invocazione, più portabile di wc|tr:
-  # su alcune shell/PATH wc o tr non risolvono — segnalato su zsh/poppix).
+  # awk per contare (più portabile di wc|tr: su zsh/poppix non risolvevano).
   n="$(git -C "$PROJECT_DIR" log --since=90.days --oneline -- "${arr[@]}" 2>/dev/null | awk 'END{print NR+0}')"
-  n="${n:-0}"
-  if   [ "$n" -ge 6 ]; then echo 2
-  elif [ "$n" -ge 1 ]; then echo 1
-  else echo 0; fi
+  echo "${n:-0}"
+}
+
+# bucket RELATIVO su scala LOG: dato il conteggio n e il MAX del set, ritorna
+# 0/1/2 (cold/warm/hot). "hot" = più attivo ADESSO, non una soglia assoluta.
+# Scala LOG (r = ln n / ln max ∈ [0,1]) perché le distribuzioni reali sono molto
+# skewed (caso poppix: api 1002 vs altri 19-50): su scala lineare tutto ciò che
+# non è il dominante collassa a cold e il baricentro sparisce; su log i gradini
+# sono percettivi e i team medi restano distinguibili. FLOOR: se il più caldo ha
+# < HEAT_FLOOR commit, TUTTO cold (niente "hot" su progetto fermo).
+HEAT_FLOOR=3
+heat_bucket() {
+  local n="$1" max="$2"
+  [ "$max" -lt "$HEAT_FLOOR" ] && { echo 0; return; }   # tutto fermo → cold
+  [ "$n" -le 0 ] && { echo 0; return; }
+  # log via awk (bash non ha log). r>=0.8 hot, r>=0.45 warm, altrimenti cold.
+  awk -v n="$n" -v m="$max" 'BEGIN{
+    if (m<=1){ print (n>=1?2:0); exit }
+    r = log(n)/log(m)
+    print (r>=0.8 ? 2 : (r>=0.45 ? 1 : 0))
+  }'
 }
 
 # drift: l'agente esiste come file su disco? (utente ~/.claude/agents, plugin
@@ -216,19 +232,30 @@ emit_tsv() {
     fi
     printf 'role\t%s\t%s\t0\t%s\t%s\n' "$role" "$agent" "$drift" "$hl"
   done < <(parse_roles)
+  # Team in DUE passi: (1) raccogli nome/glob/commits e il MAX del set;
+  # (2) emetti con bucket RELATIVO al max (+ floor). Serve vedere tutti i team
+  # prima di bucketizzare, quindi non si può fare in un solo giro.
+  local t_names=() t_globs=() t_cnt=() max=0
   while IFS=$'\t' read -r tname globs; do
     [ -n "$tname" ] || continue
-    local h; h="$(team_heat "$globs")"
+    local c; c="$(team_commits "$globs")"
+    t_names+=("$tname"); t_globs+=("$globs"); t_cnt+=("$c")
+    [ "$c" -gt "$max" ] && max="$c"
+  done < <(parse_teams)
+
+  local i
+  for i in "${!t_names[@]}"; do
+    local tname="${t_names[$i]}" globs="${t_globs[$i]}" c="${t_cnt[$i]}"
+    local h; h="$(heat_bucket "$c" "$max")"
     printf 'team\t%s\t%s\t%s\t0\t0\n' "$tname" "$globs" "$h"
     # membri della rosa del team (se dichiarata sotto "## Organigramma per team")
     while IFS=$'\t' read -r trole tagent; do
       [ -n "$trole" ] || continue
       local tdrift=0
       agent_missing "$tagent" && tdrift=1
-      # colonna 2 = nome team (per associare il membro alla stanza), 3 = "ruolo|agente"
       printf 'teammember\t%s\t%s\t0\t%s\t0\n' "$tname" "$trole|$tagent" "$tdrift"
     done < <(team_members "$tname")
-  done < <(parse_teams)
+  done
 }
 
 # ==========================================================================
