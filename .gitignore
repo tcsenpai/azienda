@@ -1,0 +1,26 @@
+# ── Artefatti di sviluppo attivati su QUESTO repo ────────────────────────────
+# Non fanno parte del plugin distribuibile: sono il tooling con cui il plugin è
+# stato sviluppato (mycelium, graft, codedb, hindsight, config MCP locale).
+.mycelium/
+.claude/
+.mcp.json
+opencode.json
+AGENTS.md
+.bank
+.ignore
+
+# graft — grafo/cache locale rigenerabile (`graft build`)
+graft/
+
+# codedb — snapshot binario rigenerabile
+codedb.snapshot
+
+# ── OS / editor ──────────────────────────────────────────────────────────────
+.DS_Store
+*.swp
+*~
+
+# ── Stato per-progetto della modalità azienda ────────────────────────────────
+# Il plugin CREA questi file nei repo DOVE viene usato, non qui. Se per errore
+# attivi la modalità azienda dentro questo repo, non committare il tuo stato.
+.claude/azienda/

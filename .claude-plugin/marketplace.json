@@ -1,0 +1,15 @@
+{
+  "name": "azienda-market",
+  "owner": {
+    "name": "Cris",
+    "email": "tcsenpai@discus.sh"
+  },
+  "plugins": [
+    {
+      "name": "azienda",
+      "source": ".",
+      "description": "azienda mode: Claude diventa il Leader/CTO del progetto, orchestra agenti specializzati, stato persistente per-progetto su disco.",
+      "version": "0.6.0"
+    }
+  ]
+}
