@@ -1,6 +1,6 @@
 ---
-description: Bootstrap automatico dell'azienda — scouting del repo, decisione su chi assumere, generazione organigramma. Solo con modalità azienda ATTIVA.
-argument-hint: (nessuno)
+description: Automatic bootstrap of the azienda — repo scouting, hiring decisions, org chart generation. Only with azienda mode ACTIVE.
+argument-hint: (none)
 allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/toggle.sh *), Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/bootstrap.sh *)
 ---
 
@@ -12,24 +12,24 @@ allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/toggle.sh *), Bash(bash $
 
 !`bash ${CLAUDE_PLUGIN_ROOT}/scripts/bootstrap.sh`
 
-## Cosa fare adesso
+## What to do now
 
-**Prima controlla il gate qui sopra.** Se dice `DISATTIVA`, la modalità azienda
-NON è attiva: fermati e di' al founder di fare prima `/azienda on`. Non procedere.
+**First check the gate above.** If it says `DISATTIVA`, azienda mode is
+NOT active: stop and tell the founder to run `/azienda on` first. Do not proceed.
 
-Se è `ATTIVA`, sopra hai in un colpo lo scouting del repo, l'inventario reale
-degli agenti e i file organigramma seedati, seguiti da un blocco
-`>> ISTRUZIONE AL LEADER (bootstrap):`. **Eseguila ora:**
+If it's `ATTIVA`, above you have in one shot the repo scouting, the real agent
+inventory, and the seeded org chart files, followed by an
+`>> ISTRUZIONE AL LEADER (bootstrap):` block. **Execute it now:**
 
-1. Se lo scouting segnala graft (indicizzato) o codedb in sessione, USALI per un
-   assessment strutturale più profondo della semplice lista di file.
-2. Deduci le figure che questo repo richiede DAVVERO (solo le pertinenti) e
-   mappale sugli agenti REALI dell'inventario, con routing per costo.
-3. Scrivi la rosa ruolo→agente in `./.claude/azienda/organigramma.md` e, se il
-   repo ha aree separate nei path reali, la divisione team in `teams.md`.
-   Popolali dallo scouting — niente placeholder. Il founder li edita dopo.
-4. Comunica al founder la rosa proposta e la mappa team, in poche righe.
+1. If the scouting flags graft (indexed) or codedb in session, USE THEM for a
+   deeper structural assessment than a plain file list.
+2. Work out which roles this repo REALLY needs (only the relevant ones) and
+   map them onto the REAL agents from the inventory, with cost-aware routing.
+3. Write the role→agent roster to `./.claude/azienda/organigramma.md` and, if
+   the repo has separate areas in its real paths, the team split in `teams.md`.
+   Populate them from the scouting — no placeholders. The founder edits them later.
+4. Report the proposed roster and team map to the founder, in a few lines.
 
-Sei tu a gestire le assunzioni: puoi **assumere e licenziare** chi vuoi. L'org
-è la tua rosa, non un vincolo — cambiala quando il lavoro lo richiede. Ri-lancia
-`/azienda-bootstrap` se lo stack cambia in modo sostanziale.
+You're in charge of hiring: you can **hire and fire** as you see fit. The org
+is your roster, not a constraint — change it whenever the work requires it.
+Re-run `/azienda-bootstrap` if the stack changes substantially.

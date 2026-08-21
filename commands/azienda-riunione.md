@@ -1,75 +1,76 @@
 ---
-description: Convoca una riunione aziendale — dibattito sequenziale tra subagent in ruolo, verbale finale. Solo con modalità azienda ATTIVA.
+description: Convene a company meeting — sequential debate between subagents in role, final minutes. Only with azienda mode ACTIVE.
 argument-hint: [team=<nome>] <topic>
 allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/riunione.sh *), Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/org.sh *)
 ---
 
-## Contesto riunione (gate + rosa + tracking)
+## Meeting context (gate + roster + tracking)
 
 !`bash ${CLAUDE_PLUGIN_ROOT}/scripts/riunione.sh context`
 
-## Procedura
+## Procedure
 
-**GATE — controlla l'output sopra.** Se dice "Modalità azienda NON attiva"
-(exit 3), FERMATI: di' al founder di fare `/azienda on`. Se è ATTIVA, procedi.
+**GATE — check the output above.** If it says "azienda mode NOT active"
+(exit 3), STOP: tell the founder to run `/azienda on`. If it's ACTIVE, proceed.
 
-La riunione NON la orchestri più a mano turno-per-turno: la **esegue un
-workflow** in una chiamata sola (dibattito sequenziale, N round, verbale del
-moderatore, self-contained). Tu fai la parte di GIUDIZIO — scegliere chi
-partecipa — poi lanci il workflow e salvi ciò che ti torna.
+The meeting is no longer orchestrated by hand turn-by-turn: a **workflow
+executes** it in a single call (sequential debate, N rounds, moderator's
+minutes, self-contained). You handle the JUDGMENT part — choosing who
+participates — then launch the workflow and save what it returns.
 
-### 1. Parsing della richiesta
-Da `$ARGUMENTS`: il **topic** (se troppo vago per un dibattito utile, fai UNA
-domanda di chiarimento prima — le riunioni costano) e un eventuale **`team=<nome>`**
-(riunione per quell'area; senza, è cross-team).
+### 1. Parsing the request
+From `$ARGUMENTS`: the **topic** (if too vague for a useful debate, ask ONE
+clarifying question first — meetings cost) and an optional **`team=<nome>`**
+(meeting for that area; without it, it's cross-team).
 
-### 2. Scegli i partecipanti (min 2 — VINCOLANTE)
-Scegli TU i ruoli dalla rosa sopra, in base al topic. **Minimo 2**: sotto non è
-una riunione — o ne aggiungi, o rispondi diretto senza convocare.
-- Se `team=X`: pesca dalla rosa ristretta con `bash …/scripts/org.sh roster X`
-  (percorso assoluto stampato sopra). Cross-team: usa l'organigramma di progetto.
-- Per ogni ruolo: se esiste un **agente su disco** con quel nome (li vedi da
-  `org.sh agents`), passalo come `agentType` (senza persona, rispetta la sua).
-  Altrimenti scrivi una **persona** di 3-4 frasi (priorità, bias, cosa contesta).
-- Routing per costo: dibattenti in fascia media; alza solo se il ruolo richiede
-  reasoning pesante. L'ORDINE della lista = ordine di parola.
-- Scala: il workflow gira `speaker × round (+1 moderatore)` agenti in totale
-  (5 speaker × 3 round = 16). Tienilo sotto ~15: se serve un panel grande,
-  riduci gli speaker o i round, non gonfiare la riunione.
+### 2. Choose the participants (min 2 — BINDING)
+YOU choose the roles from the roster above, based on the topic. **Minimum 2**:
+below that it's not a meeting — either add more, or answer directly without
+convening one.
+- If `team=X`: draw from the restricted roster with `bash …/scripts/org.sh roster X`
+  (absolute path printed above). Cross-team: use the project's organigramma.
+- For each role: if an **agent on disk** exists with that name (visible via
+  `org.sh agents`), pass it as `agentType` (no persona, respect its own).
+  Otherwise write a 3-4 sentence **persona** (priorities, biases, what it contests).
+- Cost routing: debaters in the mid tier; escalate only if the role requires
+  heavy reasoning. The list's ORDER = speaking order.
+- Scale: the workflow runs `speaker × round (+1 moderator)` agents in total
+  (5 speakers × 3 rounds = 16). Keep it under ~15: if a large panel is needed,
+  reduce speakers or rounds, don't bloat the meeting.
 
-### 3. Esegui il workflow (UNA chiamata)
-Chiama lo strumento **Workflow** con `scriptPath` puntato allo script versionato
-del plugin e `args` coi partecipanti che hai scelto:
+### 3. Run the workflow (ONE call)
+Call the **Workflow** tool with `scriptPath` pointed at the plugin's versioned
+script and `args` with the participants you chose:
 
 - `scriptPath`: `${CLAUDE_PLUGIN_ROOT}/workflows/riunione.workflow.js`
-  (usa il percorso ASSOLUTO stampato dal contesto sopra come `PLUGIN_ROOT`, non
-  la variabile: nelle tue chiamate `${CLAUDE_PLUGIN_ROOT}` è vuota.)
+  (use the ABSOLUTE path printed by the context above as `PLUGIN_ROOT`, not
+  the variable: in your calls `${CLAUDE_PLUGIN_ROOT}` is empty.)
 - `args`:
   ```json
   {
-    "topic": "<il topic>",
-    "lang": "<lingua del topic, es. it>",
+    "topic": "<the topic>",
+    "lang": "<topic language, e.g. it>",
     "speakers": [
       { "role": "SRE",        "agentType": "devops-architect" },
       { "role": "Root-cause", "agentType": "root-cause-analyst" },
-      { "role": "Backend",    "persona": "Owner del codice reale. Prioritizza il costo d'implementazione concreto; contesta le soluzioni eleganti ma costose; parla per file e funzioni." }
+      { "role": "Backend",    "persona": "Owner of the actual code. Prioritizes concrete implementation cost; contests solutions that are elegant but expensive; speaks in terms of files and functions." }
     ]
   }
   ```
-  Ogni speaker: `role` (obbligatorio), poi `agentType` (agente su disco) **oppure**
-  `persona` (testo). Opzionale `model` per-speaker. Default 3 round
-  (Apertura/Replica/Posizione finale) con early-exit implicito nel comportamento
-  degli agenti; per round custom passa `rounds: [{title, instruction}, …]`.
+  Each speaker: `role` (required), then `agentType` (agent on disk) **or**
+  `persona` (text). Optional per-speaker `model`. Default 3 rounds
+  (Opening/Rebuttal/Final position) with implicit early-exit in the agents'
+  behavior; for custom rounds pass `rounds: [{title, instruction}, …]`.
 
-Il workflow gira in background e ti notifica alla fine. Ti ritorna
-`{ topic, transcript, verbale }`. **Non fabbricare il risultato: aspetta la
-notifica** e leggi il valore di ritorno (se serve, dal journal del run).
+The workflow runs in the background and notifies you at the end. It returns
+`{ topic, transcript, verbale }`. **Don't fabricate the result: wait for the
+notification** and read the return value (from the run's journal if needed).
 
-### 4. Consegna
-- Crea la cartella: `bash …/scripts/riunione.sh mkdir <slug>` → stampa
+### 4. Delivery
+- Create the folder: `bash …/scripts/riunione.sh mkdir <slug>` → prints
   `riunioni/<slug>-<data>/`.
-- Scrivi `transcript.md` (= campo `transcript`) e `verbale.md` (= campo `verbale`).
-- **Riversa gli action item del verbale nel tracking del progetto** (backend
-  indicato nel contesto: `myc task create …` o `./.claude/azienda/vault/TASKS.md`).
-  MANDATORIO: una riunione che non lascia task tracciati è cerimonia sprecata.
-- Presenta al founder il verbale + i path, denso. Il transcript vale la lettura.
+- Write `transcript.md` (= `transcript` field) and `verbale.md` (= `verbale` field).
+- **Pour the minutes' action items into the project's tracking** (backend
+  indicated in the context: `myc task create …` or `./.claude/azienda/vault/TASKS.md`).
+  MANDATORY: a meeting that leaves no tracked tasks is wasted ceremony.
+- Present the founder with the minutes + the paths, densely. The transcript is worth reading.

@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# bootstrap.sh — bootstrap automatico dell'azienda in un colpo:
-# scouting del repo (assess) + inventario agenti reali (agents) + seed org
-# (org.sh init), poi UNA istruzione al Leader per popolare l'organigramma dai
-# fatti raccolti. Riusa i mattoni esistenti, non li duplica.
+# bootstrap.sh — automatic azienda bootstrap in one shot:
+# repo scouting (assess) + real agent inventory (agents) + org seed
+# (org.sh init), then ONE instruction to the Leader to populate the org chart
+# from the gathered facts. Reuses the existing building blocks, doesn't duplicate them.
 #
-# Gate: ha senso solo in modalità azienda attiva.
+# Gate: only makes sense in active azienda mode.
 
 set -uo pipefail
 
@@ -41,8 +41,8 @@ is_active() {
 }
 
 if ! is_active; then
-  echo "[bootstrap] Modalità azienda NON attiva in questo progetto."
-  echo "[bootstrap] Il bootstrap ha senso solo in modalità azienda. Fai prima: /azienda on"
+  echo "[bootstrap] azienda mode NOT active in this project."
+  echo "[bootstrap] The bootstrap only makes sense in azienda mode. Run first: /azienda on"
   exit 3
 fi
 
@@ -51,17 +51,17 @@ echo "# BOOTSTRAP AZIENDA — $PROJECT_DIR"
 echo "############################################################"
 echo
 
-echo "==================== 1/3 · SCOUTING REPO ===================="
+echo "==================== 1/3 · REPO SCOUTING ===================="
 echo
 bash "$SCRIPT_DIR/assess.sh"
 echo
 
-echo "================== 2/3 · INVENTARIO AGENTI =================="
+echo "================== 2/3 · AGENT INVENTORY =================="
 echo
 bash "$SCRIPT_DIR/agents.sh"
 echo
 
-echo "=================== 3/3 · SEED ORGANIGRAMMA ================="
+echo "=================== 3/3 · ORG CHART SEED ================="
 echo
 bash "$SCRIPT_DIR/org.sh" init
 echo
@@ -69,30 +69,32 @@ echo
 echo "############################################################"
 echo ">> ISTRUZIONE AL LEADER (bootstrap):"
 echo ">>"
-echo ">> Hai sopra, in un colpo: (1) i FATTI dello scouting del repo (stack,"
-echo ">> servizi, struttura, code-intel disponibile — se c'è graft/codedb/"
-echo ">> semantic-codemapper USALI per un assessment strutturale più profondo),"
-echo ">> (2) l'INVENTARIO REALE degli agenti su disco, (3) i file organigramma.md"
-echo ">> e teams.md appena seedati dai template."
+echo ">> You have above, in one shot: (1) the FACTS from the repo scouting"
+echo ">> (stack, services, structure, available code-intel — if graft/codedb/"
+echo ">> semantic-codemapper are present, USE THEM for a deeper structural"
+echo ">> assessment), (2) the REAL inventory of agents on disk, (3) the"
+echo ">> organigramma.md and teams.md files just seeded from the templates."
 echo ">>"
-echo ">> Ora, in autonomia:"
-echo ">> a) DECIDI CHI ASSUMERE. Dai fatti dello scouting deduci le figure che"
-echo ">>    questo repo richiede davvero (BE/FE/UX/QA/security/devops/perf/review/"
-echo ">>    debug/docs/release: solo quelle pertinenti, non tutte per default) e"
-echo ">>    mappale sugli agenti REALI dell'inventario (routing per costo:"
-echo ">>    meccanico→leggeri, analisi/edit→media, reasoning/review→alta)."
-echo ">> b) SCRIVI la rosa ruolo→agente in:"
+echo ">> Now, on your own:"
+echo ">> a) DECIDE WHO TO HIRE. From the scouting facts, infer the figures this"
+echo ">>    repo genuinely requires (BE/FE/UX/QA/security/devops/perf/review/"
+echo ">>    debug/docs/release: only the relevant ones, not all by default) and"
+echo ">>    map them onto the REAL agents from the inventory (cost-based routing:"
+echo ">>    mechanical→light, analysis/edit→medium, reasoning/review→high)."
+echo ">> b) WRITE the role→agent roster in:"
 echo ">>      $ORG_FILE"
-echo ">>    e — se il repo ha aree separate nei PATH reali — la divisione team in:"
+echo ">>    and — if the repo has separate areas in the real PATHs — the team"
+echo ">>    split in:"
 echo ">>      $TEAMS_FILE"
-echo ">>    Popola i file dallo scouting: NON lasciarli ai placeholder. Se è un"
-echo ">>    blocco unico, teams.md può restare a una sola voce."
-echo ">> c) COMUNICA al founder, in poche righe: la rosa proposta e la mappa team."
-echo ">>    I file sono editabili a mano: il founder integra/corregge dopo."
+echo ">>    Populate the files from the scouting: do NOT leave them as placeholders."
+echo ">>    If it's a single block, teams.md can stay a single entry."
+echo ">> c) COMMUNICATE to the founder, in a few lines: the proposed roster and"
+echo ">>    team map. The files are hand-editable: the founder integrates/corrects"
+echo ">>    afterward."
 echo ">>"
-echo ">> IMPORTANTE — sei tu a gestire le assunzioni: puoi ASSUMERE e LICENZIARE"
-echo ">> chi vuoi in qualsiasi momento. L'organigramma è la TUA rosa, non un"
-echo ">> vincolo: cambiala quando il lavoro lo richiede (nuovo agente più adatto,"
-echo ">> agente sparito dall'inventario, area del repo che cresce). Ri-lancia"
-echo ">> questo bootstrap quando lo stack cambia in modo sostanziale."
+echo ">> IMPORTANT — you manage the hiring: you can HIRE and FIRE whoever you want"
+echo ">> at any time. The org chart is YOUR roster, not a constraint: change it"
+echo ">> when the work requires it (a better-suited new agent, an agent that"
+echo ">> disappeared from the inventory, a growing repo area). Re-run this"
+echo ">> bootstrap when the stack changes substantially."
 echo "############################################################"

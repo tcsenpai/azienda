@@ -1,16 +1,17 @@
 #!/usr/bin/env bash
-# riunione.sh — prepara il contesto per una riunione aziendale (dibattito
-# multi-agente sequenziale, ispirato a production-meeting ma tailored azienda).
+# riunione.sh — prepares the context for a company meeting (sequential
+# multi-agent debate, inspired by production-meeting but tailored to azienda).
 #
-# NON orchestra la riunione (lo fa il Leader col comando /azienda-riunione): qui
-# facciamo solo il GATE (azienda deve essere ATTIVA) e raccogliamo i fatti che
-# servono al Leader per scegliere i partecipanti e dove scrivere il verbale.
+# Does NOT orchestrate the meeting (the Leader does that with the
+# /azienda-riunione command): here we only do the GATE (azienda must be ACTIVE)
+# and gather the facts the Leader needs to pick the participants and where to
+# write the minutes.
 #
-# Sub-azioni ($1):
-#   context   (default) gate + organigramma + team + backend tracking + dove va il verbale
+# Sub-actions ($1):
+#   context   (default) gate + org chart + team + tracking backend + where the minutes go
 #
-# Esce con codice != 0 (e messaggio) se la modalità azienda NON è attiva: la
-# riunione ha senso solo in modalità azienda.
+# Exits with code != 0 (and a message) if azienda mode is NOT active: the
+# meeting only makes sense in azienda mode.
 
 set -uo pipefail
 
@@ -58,61 +59,61 @@ read_tracking() {
   echo ""
 }
 
-# --- GATE: azienda deve essere attiva (vale per TUTTE le sub-azioni) ---
+# --- GATE: azienda must be active (applies to ALL sub-actions) ---
 if ! is_active; then
-  echo "[riunione] Modalità azienda NON attiva in questo progetto."
-  echo "[riunione] La riunione ha senso solo in modalità azienda. Fai prima: /azienda on"
+  echo "[riunione] azienda mode NOT active in this project."
+  echo "[riunione] The meeting only makes sense in azienda mode. Run first: /azienda on"
   exit 3
 fi
 
 case "$ACTION" in
   context)
-    echo "[riunione] Modalità azienda: ATTIVA"
-    echo "[riunione] Progetto: $PROJECT_DIR"
+    echo "[riunione] azienda mode: ATTIVA"
+    echo "[riunione] Project: $PROJECT_DIR"
     echo
 
-    echo "## Organigramma (rosa da cui scegliere i partecipanti)"
+    echo "## Org chart (roster to choose participants from)"
     if [ -f "$ORG_FILE" ]; then
       cat "$ORG_FILE"
     else
-      echo "(nessun organigramma: crealo con /azienda-org. Fallback: panel generico)"
+      echo "(no org chart: create it with /azienda-org. Fallback: generic panel)"
     fi
     echo
 
-    echo "## Team (se la riunione è per un'area specifica)"
+    echo "## Team (if the meeting is for a specific area)"
     if [ -f "$TEAMS_FILE" ]; then
       cat "$TEAMS_FILE"
     else
-      echo "(nessun teams.md: team unico / organigramma di progetto)"
+      echo "(no teams.md: single team / project org chart)"
     fi
     echo
 
     tr="$(read_tracking)"
-    echo "## Tracking del progetto: ${tr:-non configurato}"
-    echo "## Verbale: va salvato in $MEETINGS_DIR/<slug>-<data>/ (creo la dir al bisogno)"
-    echo "   e gli ACTION ITEM vanno riversati nel tracking (${tr:-vault/mycelium})."
-    echo "   Template verbale (copialo e compilalo): $PLUGIN_ROOT/verbale.template.md"
+    echo "## Project tracking: ${tr:-not configured}"
+    echo "## Minutes: to be saved in $MEETINGS_DIR/<slug>-<date>/ (creates the dir if needed)"
+    echo "   and the ACTION ITEMs go into the tracking (${tr:-vault/mycelium})."
+    echo "   Minutes template (copy and fill it in): $PLUGIN_ROOT/verbale.template.md"
     echo
 
-    echo "## Motore: PLUGIN_ROOT=$PLUGIN_ROOT"
-    echo "   Il dibattito lo esegue un workflow (una chiamata sola, self-contained):"
+    echo "## Engine: PLUGIN_ROOT=$PLUGIN_ROOT"
+    echo "   The debate is run by a workflow (a single, self-contained call):"
     echo "   $PLUGIN_ROOT/workflows/riunione.workflow.js"
     echo
-    echo ">> ISTRUZIONE (per il Leader): NON orchestrare la riunione turno-per-turno"
-    echo ">> a mano. La tua parte è il GIUDIZIO: scegli i partecipanti (min 2 —"
-    echo ">> sotto i 2 rifiuta) dalla rosa sopra, in base al topic e al team; per"
-    echo ">> ognuno un agente su disco (agentType) o una persona ad-hoc. Poi lancia"
-    echo ">> UNA chiamata allo strumento Workflow con scriptPath =="
-    echo ">> $PLUGIN_ROOT/workflows/riunione.workflow.js e args = {topic, lang,"
-    echo ">> speakers:[{role, agentType|persona}]}. Il workflow fa il dibattito"
-    echo ">> sequenziale (default 3 round) e il verbale, e ti ritorna"
-    echo ">> {transcript, verbale}. Salvali nella dir sopra (riunione.sh mkdir"
-    echo ">> <slug>) e riversa gli action item nel tracking. La procedura completa"
-    echo ">> è nel comando /azienda-riunione."
+    echo ">> ISTRUZIONE (for the Leader): do NOT orchestrate the meeting turn-by-turn"
+    echo ">> by hand. Your part is the JUDGMENT: choose the participants (min 2 —"
+    echo ">> below 2 it's refused) from the roster above, based on the topic and the"
+    echo ">> team; for each one an agent on disk (agentType) or an ad-hoc persona."
+    echo ">> Then make ONE call to the Workflow tool with scriptPath =="
+    echo ">> $PLUGIN_ROOT/workflows/riunione.workflow.js and args = {topic, lang,"
+    echo ">> speakers:[{role, agentType|persona}]}. The workflow runs the sequential"
+    echo ">> debate (default 3 rounds) and the minutes, and returns to you"
+    echo ">> {transcript, verbale}. Save them in the dir above (riunione.sh mkdir"
+    echo ">> <slug>) and pour the action items into the tracking. The full"
+    echo ">> procedure is in the /azienda-riunione command."
     ;;
 
   mkdir)
-    # crea la dir riunioni/<slug>-<data> e ne stampa il path (usato dal Leader)
+    # creates the riunioni/<slug>-<date> dir and prints its path (used by the Leader)
     slug="${2:-riunione}"
     d="$MEETINGS_DIR/${slug}-$(date -u +%Y%m%d)"
     mkdir -p "$d"
@@ -120,7 +121,7 @@ case "$ACTION" in
     ;;
 
   *)
-    echo "[riunione] Sub-azione non valida: '$ACTION' (context|mkdir <slug>)"
+    echo "[riunione] Invalid sub-action: '$ACTION' (context|mkdir <slug>)"
     exit 1
     ;;
 esac

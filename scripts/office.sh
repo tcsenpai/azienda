@@ -87,8 +87,8 @@ is_active() {
 }
 
 if ! is_active; then
-  echo "[office] Modalità azienda NON attiva in questo progetto."
-  echo "[office] La visione dell'azienda ha senso solo in modalità azienda. Fai prima: /azienda on"
+  echo "[office] azienda mode NOT active in this project."
+  echo "[office] The view of the azienda only makes sense in azienda mode. Run first: /azienda on"
   exit 3
 fi
 
@@ -269,19 +269,19 @@ render_python() {
 }
 
 render_fallback_ansi() {
-  # Nessun python: elenco raggruppato, comunque leggibile. Mai un errore.
-  echo "== VISIONE AZIENDA: $(basename "$PROJECT_DIR") =="
+  # No python: grouped list, still readable. Never an error.
+  echo "== AZIENDA VIEW: $(basename "$PROJECT_DIR") =="
   echo
-  echo "-- Rosa (ruolo → agente) --"
+  echo "-- Roster (role → agent) --"
   emit_tsv | awk -F'\t' '$1=="role"{ d=($5=="1")?"  [!drift]":""; printf "  • %s → %s%s\n", $2, ($3==""?"(fallback)":$3), d }'
   echo
-  echo "-- Team / aree (con rosa se dichiarata) --"
+  echo "-- Teams / areas (with roster if declared) --"
   emit_tsv | awk -F'\t' '
     $1=="team"{ h=($4=="2")?"hot":($4=="1")?"warm":"cold"; printf "  ▢ %-16s %s  [%s]\n", $2, $3, h; had[$2]=0 }
     $1=="teammember"{ split($3,ra,"|"); printf "      • %s → %s\n", ra[1], (ra[2]==""?"(fallback)":ra[2]); had[$2]=1 }
   '
   echo
-  echo "(python3 assente: vista testuale. Con python3 avresti la mappa ANSI.)"
+  echo "(python3 absent: text view. With python3 you'd get the ANSI map.)"
 }
 
 case "$ACTION" in

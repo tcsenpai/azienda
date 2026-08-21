@@ -1,31 +1,31 @@
-# Verbale riunione — <Topic>
+# Meeting minutes — <Topic>
 
-**Data**: <data>
-**Team**: <nome team o "cross-team">
-**Partecipanti**: <ruolo — agente/persona — model tier, uno per riga>
+**Date**: <date>
+**Team**: <team name or "cross-team">
+**Participants**: <role — agent/person — model tier, one per line>
 **Round**: <n>
 
-## Decisione
+## Decision
 
-<Cosa è stato deciso, se qualcosa. Se non c'è consenso, dillo esplicito invece
-di inventarne uno: "Nessun accordo: vedi disaccordi aperti sotto.">
+<What was decided, if anything. If there's no consensus, say so explicitly
+instead of inventing one: "No agreement: see open disagreements below.">
 
-## Punti di accordo
+## Points of agreement
 
-- <elenco>
+- <list>
 
-## Disaccordi aperti
+## Open disagreements
 
-- **<Ruolo A>** sosteneva: <posizione>
-- **<Ruolo B>** sosteneva: <posizione>
+- **<Role A>** argued: <position>
+- **<Role B>** argued: <position>
 
-## Action item (→ riversati nel tracking del progetto)
+## Action items (→ poured into the project's tracking)
 
-| Item | Owner (ruolo) | Backend tracking | Note |
+| Item | Owner (role) | Tracking backend | Notes |
 |---|---|---|---|
 | | | | |
 
-## Da portare al founder
+## To bring to the founder
 
-<Ciò che gli agenti non hanno risolto e richiede una decisione umana del founder.
-Se non c'è nulla, scrivi "Nessuno".>
+<What the agents didn't resolve and requires a human decision from the founder.
+If there's nothing, write "None".>

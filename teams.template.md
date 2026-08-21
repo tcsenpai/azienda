@@ -1,55 +1,56 @@
-<!-- FORMATO (letto da /azienda-mappa): sotto "## Team" scrivi i team come LISTA
-     `- <nome> : <glob>[, <glob>]` OPPURE come TABELLA `| Team | Glob |`. Per
-     avere i MEMBRI dentro la stanza-team nella mappa, dai al team una rosa qui
-     sotto in "## Organigramma per team" → "### <nome team>" con righe
-     `- <ruolo> → <agente>`. Un team senza rosa mostra "(eredita rosa progetto)"
-     nella mappa, non "(vuota)". -->
+<!-- FORMAT (read by /azienda-mappa): under "## Team" write teams as a LIST
+     `- <name> : <glob>[, <glob>]` OR as a TABLE `| Team | Glob |`. To have
+     MEMBERS inside the team room in the map, give the team a roster below in
+     "## Organigramma per team" → "### <team name>" with lines
+     `- <role> → <agent>`. A team without a roster shows "(eredita rosa
+     progetto)" in the map, not "(vuota)". -->
 # Team — {{PROGETTO}}
 
-> Divisione del repo in TEAM "a seconda del codice": ogni team ha un'area di
-> competenza (path-glob) e — se serve — un proprio organigramma. Quando il
-> Leader lavora su un file, i glob dicono QUALE team è competente.
+> Divides the repo into TEAMs "by area of code": each team has an area of
+> competence (path-glob) and — if needed — its own organigramma. When the
+> Leader works on a file, the globs say WHICH team is competent.
 >
-> **Statico e dichiarativo**: editi questo file a mano, non viene auto-inferito
-> a ogni task. L'assessment di `/azienda-org` può PROPORTI una divisione
-> iniziale sui path reali del repo; tu confermi. Se il progetto è un blocco
-> unico (nessuna area separata), lascia una sola voce o cancella questo file:
-> senza `teams.md` c'è un team unico che usa l'organigramma di progetto.
+> **Static and declarative**: you edit this file by hand, it's not
+> auto-inferred on every task. `/azienda-org`'s assessment can PROPOSE an
+> initial division based on the repo's real paths; you confirm. If the
+> project is a single block (no separate areas), leave a single entry or
+> delete this file: without `teams.md` there's a single team using the
+> project's organigramma.
 
 ## Team
 
-Formato per riga (una o più glob separate da virgola dopo i due punti):
-`- <nome team> : <glob>[, <glob>...]`
+Format per line (one or more glob separated by comma after the colon):
+`- <team name> : <glob>[, <glob>...]`
 
-I glob sono relativi alla radice del progetto. `**` = qualsiasi profondità.
-Esempio (adatta ai path REALI del tuo repo, questi sono solo illustrativi):
+The globs are relative to the project root. `**` = any depth.
+Example (adapt to your repo's REAL paths, these are only illustrative):
 
 - frontend : apps/web/**, packages/ui/**
 - backend  : services/**, apps/api/**
 - contracts : contracts/**, *.sol
 
-## Organigramma per team (opzionale)
+## Organigramma per team (optional)
 
-Se un team vuole una rosa di agenti diversa da quella di progetto, dichiarala
-qui sotto sotto un heading `### <nome team>` (deve combaciare col nome usato
-nella sezione Team sopra). Formato riga IDENTICO a organigramma.md:
-`- <ruolo aziendale> → <agente consigliato> [| fallback: <alt>]`
+If a team wants a different agent roster from the project's, declare it below
+under a heading `### <team name>` (must match the name used in the Team
+section above). Row format IDENTICAL to organigramma.md:
+`- <company role> → <recommended agent> [| fallback: <alt>]`
 
-Un team SENZA heading qui (o con righe solo di commento) eredita interamente la
-rosa da `organigramma.md`. `scripts/org.sh which <path>` estrae automaticamente
-la rosa del team competente (override del team se c'è, altrimenti quella di
-progetto).
+A team WITHOUT a heading here (or with only comment lines) inherits the whole
+roster from `organigramma.md`. `scripts/org.sh which <path>` automatically
+extracts the competent team's roster (the team's override if present,
+otherwise the project's).
 
 ### frontend
-- (eredita da organigramma.md — cancella questa riga e aggiungi override reali)
+- (inherits from organigramma.md — delete this line and add real overrides)
 
 ### backend
-- (eredita da organigramma.md — cancella questa riga e aggiungi override reali)
+- (inherits from organigramma.md — delete this line and add real overrides)
 
-## Nota d'uso per il Leader
+## Usage note for the Leader
 
-- Per sapere quale team copre un path: `bash scripts/org.sh which <path>`
-  (percorso assoluto stampato da `/azienda-org`).
-- Una riunione può essere convocata per un team specifico
-  (`/azienda-riunione team=frontend "<topic>"`) o cross-team (default).
-- Un file che non matcha nessun glob → team unico / organigramma di progetto.
+- To find out which team covers a path: `bash scripts/org.sh which <path>`
+  (absolute path printed by `/azienda-org`).
+- A meeting can be convened for a specific team
+  (`/azienda-riunione team=frontend "<topic>"`) or cross-team (default).
+- A file that matches no glob → single team / project organigramma.

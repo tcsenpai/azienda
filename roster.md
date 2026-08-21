@@ -1,29 +1,30 @@
-# Roster — come scegliere un agente
+# Roster — how to choose an agent
 
-Guida di scelta (METODO) per il Leader. Il parco agenti reale cambia per
-macchina/plugin, quindi qui NON c'è un elenco di nomi (invecchia subito):
-l'inventario vero è dinamico.
+Choice guide (METHOD) for the Leader. The real agent pool changes per
+machine/plugin, so there's NO name list here (it would go stale immediately):
+the real inventory is dynamic.
 
-> Nota: questo è il *metodo* generico. La ROSA concreta ruolo→agente di un
-> progetto vive in `./.claude/azienda/organigramma.md` (creala/vedila con
-> `/azienda-org`), e le aree del codice → team in `./.claude/azienda/teams.md`.
+> Note: this is the generic *method*. The concrete role→agent roster for a
+> project lives in `./.claude/azienda/organigramma.md` (create/view it with
+> `/azienda-org`), and code areas → teams in `./.claude/azienda/teams.md`.
 
-## Come scegliere
-1. **Inventario reale, adesso:** esegui `agents.sh` (nel PLUGIN_ROOT del plugin
-   azienda, path assoluto che l'hook/`/azienda on` ti hanno stampato)
-   (nome + descrizione degli agenti su disco, per fonte). Oppure delega la mappa
-   al subagent `quartiermastro`.
-2. **Match sul bisogno:** scegli l'agente la cui descrizione copre il workstream.
-   Le installazioni serie espongono figure per BE, FE, fullstack, UX, QA/test,
-   security, devops, performance, refactoring, review, debug, ricerca, docs,
-   release — cerca per quelle competenze, non per un nome fisso.
-3. **Routing per costo:** meccanico/raccolta dati → agenti leggeri; analisi/edit
-   → fascia media; reasoning complesso/sintesi/review adversariale → fascia alta
-   (mai la premium sul meccanico).
-4. **Fallback:** se manca l'agente ideale, usa il più vicino, oppure il subagent
-   confinato `luogotenente`, oppure `general-purpose`.
+## How to choose
+1. **Real inventory, right now:** run `agents.sh` (in the azienda plugin's
+   PLUGIN_ROOT, the absolute path the hook/`/azienda on` printed for you)
+   (name + description of on-disk agents, by source). Or delegate the mapping
+   to the `quartiermastro` subagent.
+2. **Match on the need:** pick the agent whose description covers the
+   workstream. Serious installations expose figures for backend, frontend,
+   fullstack, UX, QA/test, security, devops, performance, refactoring, review,
+   debug, research, docs, release — search by those competencies, not by a
+   fixed name.
+3. **Cost routing:** mechanical/data-gathering → light agents; analysis/edit
+   → mid tier; complex reasoning/synthesis/adversarial review → top tier
+   (never the premium tier on mechanical work).
+4. **Fallback:** if the ideal agent is missing, use the closest one, or the
+   confined subagent `luogotenente`, or `general-purpose`.
 
-## Conflitti write-also → worktree (obbligatorio)
-Se due o più agenti modificano file potenzialmente confliggenti, assegnali a git
-worktree separati (`git worktree add`), fai lavorare ciascuno nel suo, poi
-armonizza tu. Mai due scritture concorrenti sullo stesso file senza isolamento.
+## Write-also conflicts → worktree (mandatory)
+If two or more agents modify potentially conflicting files, assign them to
+separate git worktrees (`git worktree add`), have each work in its own, then
+you harmonize. Never two concurrent writes to the same file without isolation.

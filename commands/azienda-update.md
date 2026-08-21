@@ -1,22 +1,22 @@
 ---
-description: Migra lo stato per-progetto della modalità azienda al nuovo schema (idempotente, non distruttivo)
-argument-hint: (nessuno)
+description: Migrates the per-project state of azienda mode to the new schema (idempotent, non-destructive)
+argument-hint: (none)
 allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/update.sh *)
 ---
 
-## Esito della migrazione
+## Migration outcome
 
 !`bash ${CLAUDE_PLUGIN_ROOT}/scripts/update.sh`
 
-## Cosa fare adesso
+## What to do now
 
-Sopra c'è l'esito della migrazione dello stato per-progetto. Segui l'istruzione
-finale dello script: riassumi al founder cosa è cambiato (o che era già tutto
-in ordine).
+Above is the outcome of the per-project state migration. Follow the script's
+final instruction: summarize for the founder what changed (or that everything
+was already in order).
 
-Limiti onesti di questo comando:
-- Migra SOLO `./.claude/azienda/` (tracking, .gitignore, contatori audit).
-- NON aggiorna il plugin installato: la cache è gestita da Claude Code.
-  Per la versione nuova del plugin: `/plugin update azienda` (o reinstall
-  da `/plugin` → marketplace azienda-market).
-- Non tocca mai `policies.md`, `ledger.md`, `memory/`, `vault/`.
+Honest limits of this command:
+- It migrates ONLY `./.claude/azienda/` (tracking, .gitignore, audit counters).
+- It does NOT update the installed plugin: the cache is managed by Claude Code.
+  For the new plugin version: `/plugin update azienda` (or reinstall
+  from `/plugin` → azienda-market marketplace).
+- It never touches `policies.md`, `ledger.md`, `memory/`, `vault/`.
