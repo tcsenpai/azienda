@@ -23,10 +23,13 @@ Presentala al founder così com'è. Note d'uso:
 
 - **SVG curato** (per condividere/guardare in un browser): `office.sh svg
   ./.claude/azienda/riunioni/azienda.svg` (percorso assoluto del plugin stampato
-  sopra). Pixel-art con stanze colorate, avatar, name-tag.
-- **`--heat`**: colora le stanze per attività git recente (commit 90g sulle glob
-  del team) — opt-in, degrada a neutro senza git. `cold/warm/hot` = segnale
-  grezzo di attività, **non** di importanza (un team stabile è cold, non morto).
+  sopra). Pixel-art con stanze colorate, avatar, name-tag. Aggiungi `--open` per
+  aprirlo subito nel viewer di sistema (macOS `open` / Linux `xdg-open`).
+- **heat**: nella mappa SVG il termometro è **ON di default** (colora le stanze
+  per attività git recente, commit 90g sulle glob del team) — degrada a neutro
+  senza git. `--no-heat` per spegnerlo. `cold/warm/hot` = segnale grezzo di
+  attività, **non** di importanza (un team stabile è cold, non morto). In ANSI
+  resta opt-in (`--heat`).
 - **`--drift`**: marca con ⚠ gli agenti dell'organigramma che non esistono più
   come file su disco. NB: non conosce i subagent built-in dell'harness, quindi
   è opt-in per non dare falsi positivi.

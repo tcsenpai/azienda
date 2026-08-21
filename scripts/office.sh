@@ -14,7 +14,10 @@
 # Sub-azioni ($1):
 #   ansi | svg [out.svg] | tsv          (default: ansi)
 # Flag:
-#   --heat        colora le stanze per attività git recente (opt-in)
+#   --heat        colora le stanze per attività git recente (default ON in svg)
+#   --no-heat     disattiva il termometro heat (utile per svg, dove è ON)
+#   --drift       marca ⚠ gli agenti non presenti su disco (opt-in)
+#   --open        (con svg out.svg) apre il file nel viewer di sistema
 #   --no-color    ANSI senza colori (o rispetta NO_COLOR / pipe non-tty)
 
 set -uo pipefail
@@ -25,21 +28,30 @@ PLUGIN_ROOT="$(dirname "$SCRIPT_DIR")"
 # --- args -----------------------------------------------------------------
 ACTION="ansi"
 OUT=""
-HEAT=0
+HEAT=-1         # -1 = non impostato → default per-azione (svg: ON, ansi/tsv: OFF)
 NOCOLOR=0
 DRIFT=0
+OPEN=0
 HIGHLIGHT=""
 for a in "$@"; do
   case "$a" in
     ansi|svg|tsv) ACTION="$a" ;;
     --heat) HEAT=1 ;;
+    --no-heat) HEAT=0 ;;
     --drift) DRIFT=1 ;;
     --no-color) NOCOLOR=1 ;;
+    --open) OPEN=1 ;;
     --highlight=*) HIGHLIGHT="${a#--highlight=}" ;;
     *.svg) OUT="$a" ;;
     *) : ;;
   esac
 done
+# default heat per-azione: la mappa SVG è più "cruscotto" → heat ON di default
+# (il termometro commit-90g è il segnale più utile; degrada a neutro senza git).
+# ANSI/tsv restano OFF di default (nel terminale il tint è meno leggibile).
+if [ "$HEAT" = -1 ]; then
+  [ "$ACTION" = svg ] && HEAT=1 || HEAT=0
+fi
 [ -n "${NO_COLOR:-}" ] && NOCOLOR=1
 [ -t 1 ] || NOCOLOR=1   # pipe / file → niente ANSI
 
@@ -146,7 +158,9 @@ team_heat() {
   [ -n "$globs" ] || { echo 0; return; }
   # split glob su virgola, passa come pathspec
   local IFS=','; local arr=($globs); local n
-  n="$(git -C "$PROJECT_DIR" log --since=90.days --oneline -- "${arr[@]}" 2>/dev/null | wc -l | tr -d ' ')"
+  # conteggio righe con awk (una sola invocazione, più portabile di wc|tr:
+  # su alcune shell/PATH wc o tr non risolvono — segnalato su zsh/poppix).
+  n="$(git -C "$PROJECT_DIR" log --since=90.days --oneline -- "${arr[@]}" 2>/dev/null | awk 'END{print NR+0}')"
   n="${n:-0}"
   if   [ "$n" -ge 6 ]; then echo 2
   elif [ "$n" -ge 1 ]; then echo 1
@@ -260,11 +274,20 @@ case "$ACTION" in
     if [ -n "$OUT" ]; then
       emit_tsv | python3 "$SCRIPT_DIR/office_render.py" svg 1 "$(basename "$PROJECT_DIR")" > "$OUT"
       echo "[office] SVG scritto in: $OUT"
+      # --open: apri nel viewer di default (opt-in, per non aprire finestre a
+      # sorpresa in headless/CI). Cross-platform con detection; se il comando
+      # d'apertura manca, non è un errore.
+      if [ "$OPEN" = 1 ]; then
+        if command -v open >/dev/null 2>&1; then open "$OUT" 2>/dev/null && echo "[office] aperto con: open"
+        elif command -v xdg-open >/dev/null 2>&1; then xdg-open "$OUT" >/dev/null 2>&1 && echo "[office] aperto con: xdg-open"
+        else echo "[office] (--open: nessun opener trovato: apri a mano $OUT)"; fi
+      fi
     else
       emit_tsv | python3 "$SCRIPT_DIR/office_render.py" svg 1 "$(basename "$PROJECT_DIR")"
+      [ "$OPEN" = 1 ] && echo "[office] (--open richiede un file di output: office.sh svg out.svg --open)" >&2
     fi
     ;;
   *)
-    echo "[office] uso: office.sh ansi|svg [out.svg]|tsv  [--heat] [--no-color]"; exit 1
+    echo "[office] uso: office.sh ansi|svg [out.svg]|tsv  [--heat|--no-heat] [--drift] [--open] [--no-color] [--highlight=r1,r2]"; exit 1
     ;;
 esac

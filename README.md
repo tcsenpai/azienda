@@ -110,8 +110,11 @@ sempre la rosa di progetto.
   pixel-art, senza è una vista testuale).
 - `/azienda-mappa svg` → un file **SVG** pixel-art self-contained, apribile in
   un browser.
-- `--heat` colora le stanze per attività git recente (commit 90g sulle glob del
-  team) — `cold/warm/hot` è segnale grezzo di attività, non di importanza.
+- Il **termometro heat** (attività git 90g sulle glob del team) è **ON di default
+  nella mappa SVG** — `--no-heat` per spegnerlo; in ANSI resta opt-in (`--heat`).
+  `cold/warm/hot` è segnale grezzo di attività, non di importanza. Degrada a
+  neutro senza git.
+- `--open` (con `svg out.svg`) apre il file nel viewer di sistema.
 - `--drift` marca ⚠ gli agenti non più presenti su disco (opt-in: non conosce i
   built-in dell'harness).
 - `--highlight=SRE,Review` evidenzia dei ruoli (es. i partecipanti di una
