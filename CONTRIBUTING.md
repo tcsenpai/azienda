@@ -58,25 +58,18 @@ Non c'è un framework: i test sono **check runnable** mirati.
 Un test verde vale solo se ha **eseguito** il codice: assicurati che il caso ON
 raggiunga davvero il ramo che stai verificando, non che si fermi al gate.
 
-## Hook di coerenza doc (opzionale)
+## Hook di coerenza doc (nativo del plugin)
 
-`scripts/check-docs.sh` verifica che ogni tool opzionale wirato nel codice sia
-documentato in `OPTIONALS.md` e che il README lo linki. È un **reminder** al
-commit, non bloccante (exit 0). Lo script è versionato; l'hook che lo richiama è
-**locale** (in `.git/hooks/`, non versionato — non ti arriva col clone). Per
-attivarlo sul tuo clone:
+Il plugin registra un hook **Stop** (`scripts/stop-check-docs.sh`, dichiarato in
+`hooks/hooks.json`): a fine turno, se hai modifiche non committate a
+comandi/script/agenti/persona o ai doc, **ricorda a Claude** di rileggere
+`README.md` e `OPTIONALS.md` e verificarne la coerenza prima di committare.
 
-```bash
-cat > .git/hooks/pre-commit <<'EOF'
-#!/usr/bin/env bash
-ROOT="$(git rev-parse --show-toplevel)"
-[ -f "$ROOT/scripts/check-docs.sh" ] && bash "$ROOT/scripts/check-docs.sh"
-exit 0
-EOF
-chmod +x .git/hooks/pre-commit
-```
-
-Puoi anche lanciarlo a mano quando vuoi: `bash scripts/check-docs.sh`.
+A differenza di un git hook (bash cieco), questo parla a Claude, che può
+valutare la coerenza della **prosa**, non solo la presenza di un riferimento. È
+innocuo fuori da questo repo: se non esistono sia `README.md` sia `OPTIONALS.md`,
+non dice nulla. Si attiva da solo quando il plugin è installato (dopo un
+`sync-to-cache.sh` in sviluppo, o via `/plugin install`).
 
 ## Versioning
 
