@@ -194,21 +194,30 @@ case "$ACTION" in
   init)
     mkdir -p "$STATE_DIR"
     created=0
-    if [ ! -f "$ORG_FILE" ] && [ -f "$ORG_TEMPLATE" ]; then
+    if [ -f "$ORG_FILE" ]; then
+      echo "[org] organigramma.md già presente: non lo tocco."
+    elif [ -f "$ORG_TEMPLATE" ]; then
       _p=$(basename "$PROJECT_DIR" | sed 's/[&|]/\\&/g')
       sed "s|{{PROGETTO}}|$_p|g" "$ORG_TEMPLATE" > "$ORG_FILE"
       echo "[org] CREATO: $ORG_FILE (dal template)"
       created=1
-    elif [ -f "$ORG_FILE" ]; then
-      echo "[org] organigramma.md già presente: non lo tocco."
+    else
+      # template mancante (es. cache del plugin incompleta): NON restare muto.
+      echo "[org] ATTENZIONE: template organigramma non trovato ($ORG_TEMPLATE)."
+      echo "[org]   Il plugin in cache potrebbe essere incompleto. Aggiorna il plugin"
+      echo "[org]   (/plugin update azienda) o reinstalla. Puoi crearlo a mano: vedi il"
+      echo "[org]   formato in $PLUGIN_ROOT/organigramma.template.md se presente."
     fi
-    if [ ! -f "$TEAMS_FILE" ] && [ -f "$TEAMS_TEMPLATE" ]; then
+    if [ -f "$TEAMS_FILE" ]; then
+      echo "[org] teams.md già presente: non lo tocco."
+    elif [ -f "$TEAMS_TEMPLATE" ]; then
       _p=$(basename "$PROJECT_DIR" | sed 's/[&|]/\\&/g')
       sed "s|{{PROGETTO}}|$_p|g" "$TEAMS_TEMPLATE" > "$TEAMS_FILE"
       echo "[org] CREATO: $TEAMS_FILE (dal template)"
       created=1
-    elif [ -f "$TEAMS_FILE" ]; then
-      echo "[org] teams.md già presente: non lo tocco."
+    else
+      echo "[org] ATTENZIONE: template teams non trovato ($TEAMS_TEMPLATE)."
+      echo "[org]   Il plugin in cache potrebbe essere incompleto (aggiorna/reinstalla)."
     fi
     echo
     if [ "$created" = 1 ]; then

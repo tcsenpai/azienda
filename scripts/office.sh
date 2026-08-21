@@ -86,48 +86,26 @@ fi
 # vive la correttezza (rischio portante dall'assessment).
 # ==========================================================================
 
-# Ruoli dall'organigramma di progetto. Righe "- <ruolo> → <agente> [| fallback]".
+# Ruoli dall'organigramma di progetto. Accetta DUE formati sotto la sezione
+# "## Figure e agenti":
+#   LISTA:    - <ruolo> → <agente> [| fallback: <alt>]   (→ o ->)
+#   TABELLA:  | <ruolo> | <agente> |                       (salta header e ---)
 # Esclude placeholder del template ("(sei tu", "aggiungi qui", "…").
+# Se la sezione esiste ma nessuna riga è parsabile → warning su stderr (diag).
 parse_roles() {
   [ -f "$ORG_FILE" ] || return 0
-  awk '
-    /^##[[:space:]]/ { insec = ($0 ~ /Figure e agenti/) ? 1 : 0; next }
-    insec && /^[[:space:]]*-[[:space:]]/ {
-      line = $0
-      if (line ~ /aggiungi qui/) next
-      if (line ~ /\(sei tu/) next
-      sub(/^[[:space:]]*-[[:space:]]*/, "", line)
-      # separa ruolo → agente (accetta → o -> )
-      role = line; agent = ""
-      if (line ~ /→/)      { split(line, p, "→"); role=p[1]; agent=p[2] }
-      else if (line ~ /->/) { split(line, p, "->"); role=p[1]; agent=p[2] }
-      # taglia " | fallback: ..."
-      sub(/\|.*$/, "", agent)
-      gsub(/^[[:space:]]+|[[:space:]]+$/, "", role)
-      gsub(/^[[:space:]]+|[[:space:]]+$/, "", agent)
-      # agente tra parentesi = descrittivo (es. "(sei tu)") → vuoto
-      if (agent ~ /^\(/) agent=""
-      if (role != "") printf "%s\t%s\n", role, agent
-    }
-  ' "$ORG_FILE" 2>/dev/null
+  awk -v section="Figure e agenti" -v sep="arrow" -v label="Figure e agenti" \
+      -f "$SCRIPT_DIR/office_parse.awk" "$ORG_FILE"
 }
 
 # Team dalla sezione "## Team" (una riga per team, glob accorpate). Riusa la
 # logica di org.sh. Ritorna "team \t glob1,glob2".
 parse_teams() {
   [ -f "$TEAMS_FILE" ] || return 0
-  awk '
-    /^##[[:space:]]/ { insec = ($0 ~ /^##[[:space:]]+Team([[:space:]]|$)/) ? 1 : 0; next }
-    insec && /^[[:space:]]*-[[:space:]]+[^:]+:/ {
-      line=$0
-      sub(/^[[:space:]]*-[[:space:]]*/, "", line)
-      split(line, p, ":")
-      name=p[1]; globs=p[2]
-      gsub(/^[[:space:]]+|[[:space:]]+$/, "", name)
-      gsub(/^[[:space:]]+|[[:space:]]+$/, "", globs)
-      if (name != "") printf "%s\t%s\n", name, globs
-    }
-  ' "$TEAMS_FILE" 2>/dev/null
+  # section regex: "Team" ma NON "Organigramma per team" (il parser matcha il
+  # titolo dopo "## "; passiamo un pattern ancorato).
+  awk -v section="^Team([[:space:]]|$)" -v sep="colon" -v label="Team" \
+      -f "$SCRIPT_DIR/office_parse.awk" "$TEAMS_FILE"
 }
 
 # heat di un team: commit recenti (90g) sulle sue glob. 0 se git assente o
