@@ -47,6 +47,7 @@ for t in myc graft; do
   if command -v "$t" >/dev/null 2>&1; then ok "$t presente"; else warn "$t assente (opzionale)"; fi
 done
 say "  ! mycelium/hindsight/obsidian-memory/codedb: rilevati a runtime in sessione."
+say "  → cosa sblocca ciascuna dep opzionale e come installarla: OPTIONALS.md"
 
 # --- 2. path del marketplace -------------------------------------------------
 say

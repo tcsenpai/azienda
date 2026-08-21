@@ -17,6 +17,8 @@ reinventare.
 
 Serve [Claude Code](https://docs.anthropic.com/claude-code). Tutto il resto
 (`myc`, `graft`, gli MCP di memoria…) è **opzionale**: il plugin degrada senza.
+Cosa sblocca ciascuna dep opzionale e come installarla è in
+[OPTIONALS.md](OPTIONALS.md).
 
 ```bash
 git clone https://github.com/tcsenpai/azienda.git
