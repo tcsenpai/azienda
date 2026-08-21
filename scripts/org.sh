@@ -266,8 +266,15 @@ case "$ACTION" in
     exec bash "$SCRIPT_DIR/agents.sh"
     ;;
 
+  office)
+    # "visione dell'azienda": mappa-ufficio statica da organigramma/teams.
+    # Passa gli argomenti restanti (ansi|svg|tsv, --heat, --drift, --no-color).
+    shift 2>/dev/null || true
+    exec bash "$SCRIPT_DIR/office.sh" "$@"
+    ;;
+
   *)
-    echo "[org] Sub-azione non valida: '$ACTION' (show|init|which <path>|roster <team>|agents)"
+    echo "[org] Sub-azione non valida: '$ACTION' (show|init|which <path>|roster <team>|agents|office)"
     exit 1
     ;;
 esac

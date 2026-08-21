@@ -24,3 +24,7 @@ codedb.snapshot
 # Il plugin CREA questi file nei repo DOVE viene usato, non qui. Se per errore
 # attivi la modalità azienda dentro questo repo, non committare il tuo stato.
 .claude/azienda/
+
+# Python bytecode
+__pycache__/
+*.pyc
